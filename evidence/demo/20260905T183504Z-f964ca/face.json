@@ -1,0 +1,36 @@
+{
+  "bbox": [
+    110.62,
+    101.96,
+    273.34,
+    315.11
+  ],
+  "commitment": "0fcf8f112fe6b374a5f37e146a17be346e81fd939f87eb705bfeb21f61c0eab9",
+  "commitment_scheme": "sha256(faceanchor-v1 || salt32 || int8(embedding*127))",
+  "created_at": "2026-09-05T18:35:16Z",
+  "det_score": 0.9007,
+  "embedding_dim": 512,
+  "engine": "insightface/buffalo_l",
+  "faces_detected": 1,
+  "input": {
+    "file": "input.jpg",
+    "height": 520,
+    "phash": "beb106e3c38acccc",
+    "sha256": "3fed0e001ab7011c085d2ffa93e5f2029b402d09f8745158bfab9d59e33495a8",
+    "source_path": ".cache\\uploads\\20260905T161420Z-c8ea60.jpg",
+    "width": 390
+  },
+  "model_files": {
+    "det_10g.onnx": "5838f7fe053675b1c7a08b633df49e7af5495cee0493c7dcf6697200b85b5b91",
+    "w600k_r50.onnx": "4c06341c33c2ca1f86781dab0e829f88ad5b64be9fba56e56bc9ebdefc619e43"
+  },
+  "model_id": "SCRFD-10GF + ArcFace w600k_r50",
+  "run_id": "20260905T183504Z-f964ca",
+  "threshold": {
+    "match": 0.4,
+    "metric": "cosine",
+    "weak": 0.3
+  },
+  "zk_commitment": "18167642149512116429440249552533824115022019574952781273768102818960613657180",
+  "zk_commitment_scheme": "poseidon(pack31(int8(embedding*127) + 128) || salt31)"
+}

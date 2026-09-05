@@ -1,0 +1,29 @@
+{
+  "attempts": [
+    {
+      "accepted": true,
+      "claimed_bps": 9916,
+      "error": "",
+      "label": "honest"
+    },
+    {
+      "accepted": false,
+      "claimed_bps": 9999,
+      "error": "SimilarityNotProven",
+      "label": "forged"
+    },
+    {
+      "accepted": false,
+      "claimed_bps": 9917,
+      "error": "SimilarityNotProven",
+      "label": "off-by-one"
+    }
+  ],
+  "chain": "base-sepolia",
+  "conclusion": "the registry accepts only the similarity the proof supports",
+  "contract": "0x3827D54282047caDA437D7AeBB33e05D617Ca1b9",
+  "forged_bps": 9999,
+  "honest_bps": 9916,
+  "method": "eth_call (no gas, no state change)",
+  "run_id": "20260905T183504Z-f964ca"
+}

@@ -1,0 +1,24 @@
+{
+  "circuit": "facematch.circom",
+  "commitment_a": "18167642149512116429440249552533824115022019574952781273768102818960613657180",
+  "commitment_b": "7021886194442888246002944535918966910268984187196042127089225910739719336268",
+  "dimensions": 512,
+  "does_not_prove": "that those embeddings were produced by running the face model on the two images",
+  "dot": 16053,
+  "norm_a": 16155,
+  "norm_b": 16220,
+  "proof_file": "zk_proof.json",
+  "proves": "the published dot product and squared norms belong to the two committed embeddings",
+  "public_file": "zk_public.json",
+  "public_signals": [
+    "18167642149512116429440249552533824115022019574952781273768102818960613657180",
+    "7021886194442888246002944535918966910268984187196042127089225910739719336268",
+    "8404661",
+    "16155",
+    "16220"
+  ],
+  "scheme": "groth16/bn128",
+  "similarity": 0.9916,
+  "similarity_bps": 9916,
+  "verified_locally": true
+}

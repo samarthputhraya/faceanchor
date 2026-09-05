@@ -1,0 +1,14 @@
+{
+  "chain": "base-sepolia",
+  "chain_id": 84532,
+  "registry": "v2",
+  "contract": "0x3827D54282047caDA437D7AeBB33e05D617Ca1b9",
+  "deploy_tx": "0xad592f405ee4f8fb7224289f1430fb3054d0555ffa9ca333e7c22c5ac9e8603a",
+  "deploy_block": 46433418,
+  "solc_version": "0.8.26",
+  "deployed_at": "2026-09-05T19:05:24Z",
+  "explorer_address": "https://sepolia.basescan.org/address/0x3827D54282047caDA437D7AeBB33e05D617Ca1b9",
+  "explorer_tx": "https://sepolia.basescan.org/tx/0xad592f405ee4f8fb7224289f1430fb3054d0555ffa9ca333e7c22c5ac9e8603a",
+  "verifier": "0xf1175acf6A63c23f967431F1c7feB46eC1957c22",
+  "explorer_verifier": "https://sepolia.basescan.org/address/0xf1175acf6A63c23f967431F1c7feB46eC1957c22"
+}

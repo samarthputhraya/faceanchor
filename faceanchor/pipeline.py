@@ -936,11 +936,23 @@ def copy_to_demo(run_id: str = "") -> Path:
     dest = config.DEMO_EVIDENCE_ROOT / d.name
     if dest.exists():
         shutil.rmtree(dest)
-    shutil.copytree(d, dest, ignore=shutil.ignore_patterns("face_secret.json", "embedding.npy"))
+    # Every file here is raw biometric material. zk_secret.json holds BOTH
+    # embeddings in the clear, so omitting it matters more than the rest.
+    secrets = ("face_secret.json", "embedding.npy",
+               "post_embedding.npy", "zk_secret.json",
+               "zk_input.json", "zk_witness.wtns")
+    shutil.copytree(d, dest, ignore=shutil.ignore_patterns(*secrets))
     write_json(dest / "README.json", {
-        "note": "Sanitised copy of a real run. face_secret.json and embedding.npy are "
-                "withheld on purpose: they are the biometric material behind the "
-                "on-chain commitment and never leave the operator's machine.",
+        "note": "Sanitised copy of a real run. The biometric material behind the "
+                "on-chain commitments is withheld on purpose and never leaves the "
+                "operator's machine.",
+        "withheld": list(secrets),
+        "published_proof": "zk_proof.json and zk_public.json ARE included: they are "
+                           "what a third party needs to check the proof, and they "
+                           "reveal nothing about either embedding.",
         "verify": "python verify.py --record evidence/demo/%s/record.json" % d.name,
+        "verify_proof": ("node zk/node_modules/snarkjs/build/cli.cjs groth16 verify "
+                         "zk/verification_key.json evidence/demo/%s/zk_public.json "
+                         "evidence/demo/%s/zk_proof.json" % (d.name, d.name)),
     })
     return dest

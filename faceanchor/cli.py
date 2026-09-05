@@ -312,6 +312,8 @@ def anchor(run: str = typer.Option("", "--run"),
            chain: str = typer.Option(config.DEFAULT_CHAIN, "--chain",
                                      help="local | base-sepolia | sepolia"),
            pin: bool = typer.Option(False, "--pin", help="also pin the record to IPFS"),
+           registry: str = typer.Option("", "--registry",
+                                        help="v1 | v2; defaults to v2 when the run has a proof"),
            json_out: bool = typer.Option(False, "--json")):
     """Write the evidence hash to the registry contract."""
     out = pipeline.anchor(run, chain, pin, registry, emit=make_emitter(json_out))
