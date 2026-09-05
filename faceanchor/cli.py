@@ -20,6 +20,23 @@ from . import config, pipeline
 from .canonical import read_json
 from .events import StageEvent
 
+def _force_utf8() -> None:
+    """Make stdout and stderr UTF-8 before anything is printed.
+
+    Social posts carry Devanagari, Thai, Arabic and emoji in their titles and
+    URLs. On Windows a redirected stream defaults to the ANSI code page, so
+    printing one of those raised UnicodeEncodeError and killed the run. Output
+    is cosmetic; it must never be able to fail a pipeline.
+    """
+    for stream in (sys.stdout, sys.stderr):
+        try:
+            stream.reconfigure(encoding="utf-8", errors="replace")
+        except (AttributeError, ValueError):  # pragma: no cover - exotic streams
+            pass
+
+
+_force_utf8()
+
 app = typer.Typer(
     add_completion=False,
     no_args_is_help=True,

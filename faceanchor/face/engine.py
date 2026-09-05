@@ -117,9 +117,20 @@ def crop(image_bgr: np.ndarray, face: Face, margin: float = 0.4) -> np.ndarray:
 
 
 def save_jpeg(image_bgr: np.ndarray, path: str | Path, quality: int = 92,
-              max_side: int | None = None, max_bytes: int | None = None) -> Path:
-    """Write JPEG, optionally shrinking to fit a pixel and/or byte budget."""
+              max_side: int | None = None, max_bytes: int | None = None,
+              min_side: int | None = None) -> Path:
+    """Write JPEG, fitting a pixel and/or byte budget.
+
+    ``min_side`` upscales a small image before writing. Reverse image search
+    engines return nothing at all for tiny inputs, so a face cropped out of a
+    low-resolution photograph has to be enlarged before it is worth sending.
+    """
     img = image_bgr
+    if min_side:
+        h, w = img.shape[:2]
+        if min(h, w) < min_side:
+            s = min(4.0, min_side / max(1, min(h, w)))
+            img = cv2.resize(img, (int(w * s), int(h * s)), interpolation=cv2.INTER_CUBIC)
     if max_side:
         h, w = img.shape[:2]
         if max(h, w) > max_side:

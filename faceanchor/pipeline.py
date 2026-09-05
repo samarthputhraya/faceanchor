@@ -63,10 +63,19 @@ def scan(image_path: str | Path, engine_name: str = "", run_id: str = "",
                         f"{len(faces)} faces found; using the largest"))
 
     save_jpeg(crop(img, face, margin=0.4), d / "face_crop.jpg", quality=92)
-    # The reverse-image query image: tight enough to be about the person,
-    # small enough for the SerpApi 500 KB upload limit.
+    # Two query images. The face crop is the precise question, but a crop taken
+    # from a low-resolution photograph can be too small for a search engine to
+    # match at all, so the whole picture is kept as a fallback query.
+    face_w = face.bbox[2] - face.bbox[0]
     save_jpeg(crop(img, face, margin=0.4), d / "query.jpg",
-              quality=92, max_side=900, max_bytes=480_000)
+              quality=92, min_side=600, max_side=1400, max_bytes=480_000)
+    save_jpeg(img, d / "query_full.jpg",
+              quality=92, min_side=600, max_side=1400, max_bytes=480_000)
+    if face_w < 80:
+        emit(StageEvent("log", "scan",
+                        f"the detected face is only {int(face_w)} px wide, so the "
+                        f"crop was enlarged before searching; a higher resolution "
+                        f"photograph will match far better"))
 
     commitment, salt_hex, quantised = fingerprint.commit(face.embedding)
     input_sha = sha256_file(dest)
@@ -150,6 +159,28 @@ def search(run_id: str = "", engines: str = "lens", image_url: str = "",
                                 f"-> {len(hit_lists[-1])} hits"))
             except Exception as exc:  # noqa: BLE001
                 errors.append(f"serpapi lens {kind}: {exc}")
+
+    # A crop from a small photograph can return nothing at all. Retry once with
+    # the whole picture, which gives the engine background and clothing to work
+    # with; the face check afterwards is unchanged, so this cannot loosen the
+    # decision, only widen what gets checked.
+    if "lens" in wanted and not raws and serpapi.available() and not image_url             and (d / "query_full.jpg").exists():
+        emit(StageEvent("log", "search",
+                        "the face crop returned nothing; retrying with the whole image"))
+        try:
+            full_id = serpapi.upload_image(d / "query_full.jpg")
+            rs = serpapi.google_lens(image_id=full_id, kind="visual_matches",
+                                     cache_key=cache_key + "-full", use_cache=use_cache)
+            if rs.error:
+                errors.append(f"{rs.provider}/whole-image: {rs.error}")
+            else:
+                raws.append(rs)
+                hit_lists.append(serpapi.hits_from(rs))
+                emit(StageEvent("log", "search",
+                                f"whole image: search_id {rs.search_id} -> "
+                                f"{len(hit_lists[-1])} hits"))
+        except Exception as exc:  # noqa: BLE001
+            errors.append(f"whole-image retry: {exc}")
 
     if "lens" in wanted and not raws and fallbacks.searchapi_available() and image_url:
         try:
