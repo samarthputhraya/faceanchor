@@ -3,6 +3,20 @@
 A face scan becomes a web search, the match becomes an evidence bundle, and the
 bundle's hash becomes an immutable on-chain record that anyone can re-verify.
 
+**And the chain refuses to record a face match it has not been shown proof of.**
+A registry that stores a similarity score is only as honest as whoever wrote it
+&mdash; nothing stops an operator anchoring `0.99` against a stranger. FaceAnchor
+generates a zero-knowledge proof that the similarity really is the cosine of the
+two committed embeddings, and the contract verifies that proof on-chain before it
+will store anything. The biometric never leaves the machine.
+
+```
+$ python -m faceanchor forge-demo
+honest       0.9916   ACCEPTED
+forged       0.9999   REJECTED   SimilarityNotProven
+off-by-one   0.9917   REJECTED   SimilarityNotProven
+```
+
 [![ci](https://github.com/samarthputhraya/faceanchor/actions/workflows/ci.yml/badge.svg)](https://github.com/samarthputhraya/faceanchor/actions/workflows/ci.yml)
 ![python](https://img.shields.io/badge/python-3.12-blue)
 ![chain](https://img.shields.io/badge/chain-Base%20Sepolia-0052ff)
@@ -32,6 +46,16 @@ Three stages, matching the three requirements of the task.
    record back through `eth_call` **and** the emitted event log, and reports
    field by field. Change one character of the bundle and it fails.
 
+Plus one the task did not ask for:
+
+4. **A proof that the match is honest.** A Groth16 proof (17,797 constraints,
+   ~10 s on CPU) shows that the published dot product and norms belong to the
+   two committed embeddings, without revealing either. `FaceAnchorRegistryV2`
+   verifies it on-chain and rejects any similarity the proof does not support
+   &mdash; including one basis point too many. Full detail, including what the
+   proof deliberately does **not** cover, is in
+   [docs/zero-knowledge-proof.md](docs/zero-knowledge-proof.md).
+
 ```mermaid
 flowchart LR
     A[photo or webcam] --> B[detect + embed<br/>ArcFace 512-d]
@@ -43,7 +67,9 @@ flowchart LR
     F --> G[canonical record.json]
     C --> G
     G --> H[sha256 = recordHash]
-    H --> I[FaceAnchorRegistry<br/>Base Sepolia]
+    F --> P[groth16 proof<br/>cosine without the biometric]
+    P --> I
+    H --> I[FaceAnchorRegistryV2<br/>verifies the proof on-chain]
     I --> J[verify.py<br/>recompute · eth_call · event log]
     J --> K{match?}
     K -->|yes| L[VERIFIED · exit 0]
@@ -62,6 +88,18 @@ python -m venv .venv && .venv\Scripts\activate     # Windows
 pip install -r requirements.txt
 cp .env.example .env                               # then fill in the keys below
 ```
+
+To generate proofs you also need Node 20+ and a one-off build of the circuit.
+It downloads a prebuilt `circom` binary, runs its own trusted setup and exports
+the Solidity verifier — about three minutes, no compiler, no Rust:
+
+```bash
+powershell -ExecutionPolicy Bypass -File zk/build.ps1
+```
+
+Skip it and everything else still works: runs without a proof anchor to the v1
+registry. **Checking** a published proof needs neither the build nor the
+proving key, only `zk/verification_key.json`.
 
 Run the whole pipeline against the in-process chain, which needs no key, no
 faucet and no network beyond the search itself:
@@ -84,10 +122,16 @@ Stage by stage, if you would rather watch each one:
 python -m faceanchor scan    --image demo/sundar_pichai.jpg
 python -m faceanchor search  --engines lens,bing,yandex
 python -m faceanchor extract
-python -m faceanchor anchor  --chain base-sepolia
+python -m faceanchor prove                          # ~10 s, no search quota
+python -m faceanchor anchor  --chain base-sepolia   # v2 when a proof exists
 python -m faceanchor verify  --biometric
 python -m faceanchor tamper-demo --field caption
+python -m faceanchor forge-demo                     # the chain refuses a lie
 ```
+
+`forge-demo` asks the live contract to accept a similarity the proof does not
+support. Every attempt goes through `eth_call`, which runs against real chain
+state and throws the result away, so it writes nothing and costs no gas.
 
 The dashboard shows the same run in a browser, including a live webcam scan:
 
@@ -118,20 +162,26 @@ No key is required for `--chain local`, the tests, or CI.
 | --- | --- |
 | Network | Base Sepolia (OP-stack Ethereum L2 testnet) |
 | Chain id | 84532 |
-| Contract | `FaceAnchorRegistry`, Solidity 0.8.26, optimizer on, 200 runs |
-| Address | [`0xAFeB0eDaC32b4fD7710418211619ddE36C735D43`](https://sepolia.basescan.org/address/0xAFeB0eDaC32b4fD7710418211619ddE36C735D43) |
-| Deploy transaction | [`0xaf625352e4895628…`](https://sepolia.basescan.org/tx/0xaf625352e4895628aa46fe3b6c85ae92aef61a6ce196c668637bafbde0c2cff0) |
-| Demo record | [`0xb20ba2b7ffd38b35…`](https://sepolia.basescan.org/tx/0xb20ba2b7ffd38b35f366e04799788a088b3c4728f23472442e7212418fd05f3f) |
+| Contracts | Solidity 0.8.26, optimizer on, 200 runs (v2 and the verifier need `viaIR`) |
+| **Registry v2** (proof-gated) | [`0x3827D54282047caDA437D7AeBB33e05D617Ca1b9`](https://sepolia.basescan.org/address/0x3827D54282047caDA437D7AeBB33e05D617Ca1b9) |
+| **Groth16 verifier** | [`0xf1175acf6A63c23f967431F1c7feB46eC1957c22`](https://sepolia.basescan.org/address/0xf1175acf6A63c23f967431F1c7feB46eC1957c22) |
+| Registry v1 (still live) | [`0xAFeB0eDaC32b4fD7710418211619ddE36C735D43`](https://sepolia.basescan.org/address/0xAFeB0eDaC32b4fD7710418211619ddE36C735D43) |
+| Demo record, v2 + proof | [`0xd77c00e8958b500c…`](https://sepolia.basescan.org/tx/0xd77c00e8958b500c7f10ccdaf3a33453679e4fcc5bda61764b2e352c75592bd7) |
+| Demo record, v1 | [`0xb20ba2b7ffd38b35…`](https://sepolia.basescan.org/tx/0xb20ba2b7ffd38b35f366e04799788a088b3c4728f23472442e7212418fd05f3f) |
 | Explorer | [sepolia.basescan.org](https://sepolia.basescan.org) |
-| Cost | about 299,000 gas per record, roughly 0.000003 ETH at Base Sepolia gas |
-| Fallbacks | Ethereum Sepolia (11155111), or `--chain local`, an in-process py-evm chain running the identical contract |
+| Cost | 299,000 gas per v1 record; 634,747 for a v2 record, the extra being on-chain proof verification |
+| Fallbacks | Ethereum Sepolia (11155111), or `--chain local`, an in-process py-evm chain running the identical contracts |
+
+v1 stays deployed and its record stays verifiable exactly as first published.
+v2 is additive: a run only reaches it if it carries a proof.
 
 **On-chain:** the record hash, the input image SHA-256, the salted face
 commitment, the post URL hash, the post image SHA-256, a 64-bit perceptual
-hash, the similarity in basis points, the submitter and a timestamp.
+hash, the similarity in basis points, the submitter and a timestamp. v2 adds
+the two Poseidon commitments and the proven dot product and squared norms.
 
-**Never on-chain:** the photograph, the face embedding, the commitment salt, or
-any name. Face embeddings can be inverted back into a recognisable face, so
+**Never on-chain:** the photograph, either face embedding, any salt, or any
+name. Face embeddings can be inverted back into a recognisable face, so
 publishing one would publish a biometric. The salt stays in
 `face_secret.json`, which is gitignored, and that is what makes the commitment
 binding rather than guessable.
@@ -184,6 +234,28 @@ and the best was anchored on Base Sepolia.
 `search/quota.json` rather than hidden, because a partial engine response is
 part of what actually happened.
 
+### And one with a proof
+
+`evidence/demo/20260905T183504Z-f964ca/` is a second complete run, anchored to
+the proof-gated registry.
+
+| | |
+| --- | --- |
+| Best match | an x.com post, cosine 0.9939 on the full post image |
+| Proven cosine | 0.9916 &mdash; `dot` 16053, `normA` 16155, `normB` 16220 |
+| Proving time | ~10 s on CPU, 0 search quota |
+| Record hash | `f275472bf35b2f64d4f7aa9cb060f467875d3a4093e69365f665fca110428003` |
+| Transaction | [`0xd77c00e8958b500c…`](https://sepolia.basescan.org/tx/0xd77c00e8958b500c7f10ccdaf3a33453679e4fcc5bda61764b2e352c75592bd7) |
+| Gas | 634,747, including on-chain proof verification |
+| Forge attempt | 0.9999 and 0.9917 both rejected `SimilarityNotProven` |
+
+The proof in that bundle can be checked without the repo's proving key or any
+of the biometric material:
+
+```bash
+node zk/node_modules/snarkjs/build/cli.cjs groth16 verify   zk/verification_key.json   evidence/demo/20260905T183504Z-f964ca/zk_public.json   evidence/demo/20260905T183504Z-f964ca/zk_proof.json
+```
+
 ## The evidence bundle
 
 Each run writes a self-contained folder. Only the record itself is hashed and
@@ -209,67 +281,29 @@ evidence/runs/<run_id>/
 
 ## How the search is genuinely a search
 
-The task asks for a real search rather than a pre-picked result, so the design
-makes that checkable rather than asking to be believed.
+The task requires a genuine search, not a pre-picked result. Four things make
+that checkable rather than asserted:
 
-- Every provider response is written to disk untouched, with the provider's own
-  `search_id` and timestamp. Those ids appear in the SerpApi dashboard.
-- The remaining search quota is printed before and after the run.
-- Every candidate is listed with its cosine score, including the ones that
-  lost. A cherry-picked result cannot produce rejections.
-- The threshold, the metric, the model and the hashes of the model files all go
-  into the hashed record, so the decision rule is fixed before the answer.
-- There are no post URLs anywhere in the source. `grep -r "instagram.com/p/" faceanchor/`
-  returns nothing.
-- When nothing clears the threshold the run exits 2 and says so. There is no
-  fallback that invents a match.
-- Running a different photograph produces a different candidate set; running a
-  private individual's photograph is expected to produce no match at all.
-- A **control run** answers the obvious objection. A search engine that keeps
-  returning the right person leaves a normal run with no rejections, which
-  makes it fair to ask whether the comparison does anything at all:
+- **Every provider response is written to disk verbatim**, with its SerpApi
+  search id, before anything is parsed. The ids are visible in the SerpApi
+  dashboard.
+- **Rejected candidates stay in the output.** `candidates.json` keeps every URL
+  scored, including the failures, with its cosine and verdict.
+- **No match means exit 2.** There is no fallback to a curated URL. Grep the
+  search module for `instagram.com/` and you will not find one.
+- **The `control` command re-scores a finished run against a different
+  person's face.** On the demo run: 20 of 20 candidates matched the scanned
+  face, 0 of 20 matched the control. It costs no search quota, because it
+  re-uses thumbnails already on disk.
 
-  ```bash
-  python -m faceanchor control --run <kohli_run> --image demo/sundar_pichai.jpg
-  ```
-
-  The same 20 posts, the same thumbnails on disk, the same thresholds and the
-  same code, with only the reference face swapped:
-
-  | | scored against the scanned face | scored against a different face |
-  | --- | --- | --- |
-  | posts matching | 20 of 20 | 0 of 20 |
-  | score range | 0.5645 to 0.9324 | -0.0165 to 0.1334 |
-
-  It costs no search quota, because it re-uses the thumbnails already fetched.
+Full detail, including the control-run table: [docs/genuine-search.md](docs/genuine-search.md).
 
 ## Face matching
 
-| | |
-| --- | --- |
-| Detector | SCRFD-10GF (`det_10g.onnx`) |
-| Encoder | ArcFace `w600k_r50`, 512-d, L2-normalised |
-| Metric | cosine similarity |
-| Decision | match at 0.40, strong at 0.50, weak band 0.30 to 0.40 |
-| Fallback engine | OpenCV YuNet + SFace, 128-d, threshold 0.363 (`--engine sface`) |
-
-Measured on this machine with Wikimedia portraits, first load 28 s then about
-1 s per image on CPU:
-
-| pair | cosine | expected |
-| --- | --- | --- |
-| Pichai, two different photographs | 0.759 | same person |
-| Pichai, two crops of one photograph | 0.993 | same person |
-| Kohli, two different photographs | 0.625 | same person |
-| Pichai vs Nadella | −0.038 | different |
-| Pichai vs Musk | −0.059 | different |
-| Musk vs Altman | 0.069 | different |
-| Pichai vs Kohli | 0.071 | different |
-
-Search-engine thumbnails are small, so a true match from a thumbnail often
-lands between 0.40 and 0.55 rather than higher. When the full-size image can be
-fetched from the post, the score is recomputed on it and the record states
-which image the final number came from.
+ArcFace `w600k_r50` via insightface (512-d, L2-normalised), cosine similarity,
+MATCH at 0.40 and WEAK at 0.30. The OpenCV YuNet + SFace fallback (128-d) has
+its own calibration at 0.363. Measured scores on the demo portraits, and the
+reasoning behind the thresholds: [docs/face-matching.md](docs/face-matching.md).
 
 ## Tests and CI
 
@@ -290,6 +324,25 @@ engines counted as two candidates.
 
 ## Known limitations
 
+- **The proof does not bind the embeddings to the images.** It proves the
+  published similarity is the true cosine of the two *committed* vectors. It
+  does not prove those vectors came from running ArcFace on the two pictures —
+  that needs the model inside the circuit, which is orders of magnitude larger.
+  Someone who fabricates **both** vectors can satisfy the circuit by choosing
+  `A == B`. What they cannot do is inflate the similarity of a pair they
+  committed to, or retrofit `commitmentA`, which is fixed during `scan` before
+  the search runs. Binding a vector to an image is still available via
+  `verify --biometric`, which re-runs the model against `input.jpg`.
+- **The trusted setup is a development ceremony.** Every public Powers of Tau
+  mirror in the snarkjs README returns `AccessDenied` as of September 2026, so
+  `zk/build.ps1` runs its own. Whoever ran it could in principle forge proofs.
+  A real deployment needs the Perpetual Powers of Tau and a multi-party phase 2.
+- **The proven similarity differs slightly from the reported one.** The circuit
+  works on int8-quantised vectors; the pipeline scores in float32. On the demo
+  run that is 0.9916 against 0.9939. Both numbers are published rather than
+  reconciled.
+- **Proving is 512-d only.** The circuit is compiled for insightface. A run that
+  falls back to OpenCV SFace (128-d) produces no proof and anchors to v1.
 - **Recall depends on the search index.** Google Lens indexes public content
   well for public figures and poorly for private individuals. A private account
   will not be found, and that is the correct outcome, not a bug.
@@ -343,8 +396,10 @@ faceanchor/          pipeline package
   extract/           post extraction with three transports
   chain/             contract compilation and the chain client
   cli.py  api.py     terminal and web front ends
-contracts/           FaceAnchorRegistry.sol and its committed build artifact
+  zk/                proof generation, shelling out to snarkjs
+contracts/           v1, v2 and the generated verifier, with build artifacts
 deployments/         deployed address, deploy transaction and block per chain
+zk/                  facematch.circom, the build script, verification_key.json
 ui/                  React dashboard
 tests/               55 tests, no keys required
 verify.py            standalone verifier: web3 and the standard library only
