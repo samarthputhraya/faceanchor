@@ -17,6 +17,7 @@ from __future__ import annotations
 import html
 import json
 import re
+import time
 from dataclasses import asdict, dataclass, field
 from datetime import datetime, timezone
 from pathlib import Path
@@ -174,31 +175,51 @@ def oembed(platform: str, url: str) -> dict | None:
         return None
 
 
-def from_html(page: str, post: Post) -> None:
-    """Fill a Post from OpenGraph, JSON-LD and inline date markup."""
-    og = meta_tags(page)
-    if og.get("og:image") and not post.image_url:
-        post.image_url = og["og:image"]
-        post.image_source = "post_og"
-    title = og.get("og:title", "")
-    desc = og.get("og:description", "")
-    if desc and not post.caption:
-        post.caption = desc
-    if title and not post.author:
-        # "Name (@handle) on X", "Name on Instagram: ...", "Name | LinkedIn"
-        m = re.search(r"\(@([A-Za-z0-9_.]+)\)", title) or re.search(
-            r"^(.*?)\s+on\s+(?:Instagram|X|Threads|TikTok)", title
-        )
-        post.author = (m.group(1) if m else title.split("|")[0]).strip()
+def _author_from_title(title: str) -> str:
+    """Best-effort handle or name out of an og:title.
 
+    Only used when structured data does not name the author, because titles are
+    frequently the post text rather than the poster.
+    """
+    m = re.search(r"\(@([A-Za-z0-9_.]+)\)", title)          # "Name (@handle) on X"
+    if m:
+        return m.group(1)
+    m = re.search(r"^(.*?)\s+on\s+(?:Instagram|X|Twitter|Threads|TikTok)", title)
+    if m:
+        return m.group(1).strip()
+    return ""
+
+
+def from_html(page: str, post: Post) -> None:
+    """Fill a Post from JSON-LD first, then OpenGraph, then inline date markup.
+
+    Structured data wins: a LinkedIn og:title is the post text, while its
+    JSON-LD SocialMediaPosting names the account that published it.
+    """
     for block in json_ld(page):
         for key in ("datePublished", "uploadDate", "dateCreated"):
             if block.get(key) and post.posted_at_source != "exact":
                 post.posted_at = _iso_from(str(block[key]))
                 post.posted_at_source = "exact"
         author = block.get("author")
-        if isinstance(author, dict) and author.get("name") and not post.author:
+        if isinstance(author, list):
+            author = author[0] if author else None
+        if isinstance(author, dict) and author.get("name"):
             post.author = str(author["name"])
+        elif isinstance(author, str) and author:
+            post.author = author
+        if block.get("creator") and not post.author:
+            post.author = str(block["creator"])
+
+    og = meta_tags(page)
+    if og.get("og:image") and not post.image_url:
+        post.image_url = og["og:image"]
+        post.image_source = "post_og"
+    desc = og.get("og:description", "")
+    if desc and not post.caption:
+        post.caption = desc
+    if not post.author:
+        post.author = _author_from_title(og.get("og:title", ""))
 
     if post.posted_at_source != "exact":
         m = _ITEMPROP_DATE.search(page) or _TIME_TAG.search(page)
@@ -267,10 +288,20 @@ def youtube_extras(url: str, post: Post) -> None:
 
 
 def reddit_extras(url: str, post: Post) -> None:
-    """Unauthenticated .json is dead since May 2026; the RSS feed still works."""
+    """Unauthenticated .json died in May 2026; the RSS feed still works.
+
+    RSS is rate limited to roughly one request a minute per IP, so a 429 is
+    retried once before giving up and letting the thumbnail fallback take over.
+    """
     r = fetch(url.rstrip("/") + "/.rss")
+    if r is not None and r.status_code == 429:
+        time.sleep(int(r.headers.get("x-ratelimit-reset", 8)) + 1)
+        r = fetch(url.rstrip("/") + "/.rss")
     if r is None or r.status_code != 200:
-        post.notes.append(f"reddit rss unavailable (status {getattr(r, 'status_code', 'n/a')})")
+        post.notes.append(
+            f"reddit rss unavailable (status {getattr(r, 'status_code', 'n/a')}); "
+            "author and caption still come from oEmbed"
+        )
         return
     body = html.unescape(r.text)
     img = re.search(r"https://(?:i\.redd\.it|preview\.redd\.it)/[^\"'\s<&]+", body)
