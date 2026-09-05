@@ -539,6 +539,85 @@ def prove(run_id: str = "", emit: Emit = _noop) -> dict:
     return out
 
 
+def forge_demo(run_id: str = "", chain: str = "", forged_bps: int = 9999,
+               emit: Emit = _noop) -> dict:
+    """Ask the chain to accept a similarity the proof does not support.
+
+    Every claim is put through eth_call, which executes against real chain
+    state and then throws the result away. Nothing is written and no gas is
+    spent, so this is safe to run live against Base Sepolia during a demo.
+    """
+    from .chain.client import ChainClient
+
+    d = config.resolve_run(run_id, needs="anchor.json")
+    anchor_info = read_json(d / "anchor.json")
+    zk = read_json(d / "zk.json")
+    record = read_json(d / "record.json")
+    chain = chain or anchor_info.get("chain") or anchor_info["deployment"]["chain"]
+    registry = anchor_info["deployment"].get("registry", "v1")
+    contract = anchor_info["deployment"]["contract"]
+
+    if registry != "v2":
+        raise SystemExit(
+            "this run was anchored to the v1 registry, which has no proof to "
+            "forge against. Re-anchor with --registry v2."
+        )
+
+    emit(StageEvent("stage_start", "forge",
+                    f"asking {contract} to accept a similarity it has no proof for"))
+
+    client = ChainClient(chain, registry=registry)
+    proof = zk_prover.solidity_calldata(d)
+    post = record["post"]
+    honest_bps = zk["similarity_bps"]
+
+    def attempt(bps: int, label: str) -> dict:
+        # A different record hash each time: an identical one would be rejected
+        # as a duplicate and prove nothing about the similarity check.
+        rh = sha256_text(f"{anchor_info['record_hash']}:{label}:{bps}")
+        ok, err = client.dry_run_anchor(
+            contract, record_hash=rh,
+            input_image_sha256=record["input"]["sha256"],
+            face_commitment=record["face"]["commitment"],
+            post_url_hash=post["url_sha256"],
+            post_image_sha256=post["image_sha256"] or ("0" * 64),
+            input_phash=phash_uint64(record["input"]["phash"]),
+            similarity_bps=bps, evidence_uri="sha256:forge-demo", proof=proof,
+        )
+        row = {"label": label, "claimed_bps": bps, "accepted": ok, "error": err}
+        emit(StageEvent("candidate", "forge", label, {
+            "verdict": "MATCH" if ok else "REJECT",
+            "similarity": bps / 10000, "platform": label[:10],
+            "url": "accepted by the chain" if ok else f"rejected: {err}",
+            "progress": "", "faces_found": 0, "engines_agreeing": 0,
+        }))
+        return row
+
+    rows = [
+        attempt(honest_bps, "honest"),
+        attempt(forged_bps, "forged"),
+        attempt(honest_bps + 1, "off-by-one"),
+    ]
+
+    out = {
+        "run_id": d.name, "chain": chain, "contract": contract,
+        "honest_bps": honest_bps, "forged_bps": forged_bps,
+        "attempts": rows,
+        "method": "eth_call (no gas, no state change)",
+        "conclusion": (
+            "the registry accepts only the similarity the proof supports"
+            if rows[0]["accepted"] and not rows[1]["accepted"] and not rows[2]["accepted"]
+            else "UNEXPECTED: see attempts"
+        ),
+    }
+    write_json(d / "forge_demo.json", out)
+    ok = rows[0]["accepted"] and not rows[1]["accepted"] and not rows[2]["accepted"]
+    emit(StageEvent("stage_end", "forge", out["conclusion"], out))
+    if not ok:
+        raise SystemExit(config.EXIT_ZK)
+    return out
+
+
 # --- stage 4: anchor ---------------------------------------------------------------
 
 def build_record(d: Path) -> dict:
@@ -546,8 +625,9 @@ def build_record(d: Path) -> dict:
     cands = read_json(d / "candidates.json")
     post = read_json(d / "post.json")
     summary = read_json(d / "search" / "summary.json")
+    zk = read_json(d / "zk.json") if (d / "zk.json").exists() else None
 
-    return {
+    record = {
         "schema": SCHEMA,
         "run_id": d.name,
         "created_at": face["created_at"],
@@ -602,17 +682,48 @@ def build_record(d: Path) -> dict:
         },
     }
 
+    # Only present when the run was proved. Without this guard every existing
+    # v1 bundle would change shape, and with it every published record hash.
+    if zk:
+        record["zk"] = {
+            "scheme": zk["scheme"],
+            "circuit": zk["circuit"],
+            "dimensions": zk["dimensions"],
+            "commitment_a": zk["commitment_a"],
+            "commitment_b": zk["commitment_b"],
+            "dot": zk["dot"],
+            "norm_a": zk["norm_a"],
+            "norm_b": zk["norm_b"],
+            "similarity_bps": zk["similarity_bps"],
+            "public_signals": zk["public_signals"],
+            "proves": zk["proves"],
+            "does_not_prove": zk["does_not_prove"],
+        }
+    return record
+
 
 def anchor(run_id: str = "", chain: str = "local", pin: bool = False,
-           emit: Emit = _noop) -> dict:
+           registry: str = "", emit: Emit = _noop) -> dict:
     from .chain.client import ChainClient
 
     d = config.resolve_run(run_id, needs="post.json")
-    record = build_record(d)
-    record["chain_intent"] = {"chain": chain, "chain_id": config.get_chain(chain).chain_id}
+    zk = read_json(d / "zk.json") if (d / "zk.json").exists() else None
 
-    emit(StageEvent("stage_start", "anchor", f"chain {chain}"))
-    client = ChainClient(chain)
+    # A run that has a proof anchors against the registry that checks it.
+    # Without one there is nothing for v2 to verify, so it falls back to v1.
+    registry = registry or ("v2" if zk else "v1")
+    if registry == "v2" and not zk:
+        raise SystemExit(
+            "--registry v2 needs a proof, and this run has no zk.json. "
+            f"Run:  python -m faceanchor prove --run {d.name}"
+        )
+
+    record = build_record(d)
+    record["chain_intent"] = {"chain": chain, "chain_id": config.get_chain(chain).chain_id,
+                              "registry": registry}
+
+    emit(StageEvent("stage_start", "anchor", f"chain {chain} | registry {registry}"))
+    client = ChainClient(chain, registry=registry)
 
     deployment = client.load_deployment()
     if deployment is None:
@@ -669,8 +780,12 @@ def anchor(run_id: str = "", chain: str = "local", pin: bool = False,
             post_url_hash=post["url_sha256"],
             post_image_sha256=post["image_sha256"] or ("0" * 64),
             input_phash=phash_uint64(record["input"]["phash"]),
-            similarity_bps=int(round(max(0.0, post["similarity"]) * 10000)),
+            # v2 stores the PROVEN similarity, not the float the pipeline
+            # computed: it is the only one the contract will accept.
+            similarity_bps=(zk["similarity_bps"] if registry == "v2"
+                            else int(round(max(0.0, post["similarity"]) * 10000))),
             evidence_uri=evidence_uri,
+            proof=(zk_prover.solidity_calldata(d) if registry == "v2" else None),
         )
         result["record_hash"] = rec_hash
         result["evidence_uri"] = evidence_uri
@@ -694,6 +809,9 @@ def verify(run_id: str = "", chain: str = "", tamper_field: str = "",
     anchor_info = read_json(d / "anchor.json")
     chain = chain or anchor_info.get("chain") or anchor_info["deployment"]["chain"]
     contract = anchor_info["deployment"]["contract"]
+    # The two registries have different ABIs, so a record must be read back
+    # through the one it was written to. Older runs predate the field.
+    registry = anchor_info["deployment"].get("registry", "v1")
 
     if config.get_chain(chain).is_local:
         from .chain.client import _LOCAL_DEPLOYMENT
@@ -757,7 +875,7 @@ def verify(run_id: str = "", chain: str = "", tamper_field: str = "",
                    "recomputed": local_hash, "in_record": anchored_hash,
                    "ok": local_hash == anchored_hash})
 
-    client = ChainClient(chain)
+    client = ChainClient(chain, registry=registry)
     onchain = client.verify(
         contract,
         record_hash=local_hash,

@@ -56,6 +56,7 @@ STAGE_TITLE = {
     "prove": "4 PROVE  zero-knowledge proof that the match is honest",
     "anchor": "5 ANCHOR  write the evidence hash on-chain",
     "verify": "6 VERIFY  recompute and re-read from the chain",
+    "forge": "FORGE  try to write a similarity the proof does not support",
 }
 
 
@@ -242,6 +243,35 @@ def prove(run: str = typer.Option("", "--run"),
             ), title="zero-knowledge proof", border_style="magenta"))
 
 
+@app.command("forge-demo")
+def forge_demo(run: str = typer.Option("", "--run"),
+               chain: str = typer.Option("", "--chain"),
+               forged: int = typer.Option(9999, "--forged-bps",
+                                          help="the similarity to try to fake"),
+               json_out: bool = typer.Option(False, "--json")):
+    """Try to write a similarity the proof does not support. The chain says no."""
+    out = pipeline.forge_demo(run, chain, forged, emit=make_emitter(json_out))
+    if json_out:
+        return
+    t = Table(header_style="bold", expand=False,
+              title=f"what {out['contract']} will accept", title_style="bold")
+    t.add_column("claim")
+    t.add_column("similarity", justify="right")
+    t.add_column("chain's answer")
+    for a in out["attempts"]:
+        accepted = a["accepted"]
+        t.add_row(
+            a["label"],
+            f"{a['claimed_bps'] / 10000:.4f}",
+            Text("ACCEPTED", style="bold green") if accepted
+            else Text(f"REJECTED  {a['error']}", style="bold red"),
+        )
+    console.print(t)
+    console.print(Panel(
+        Text(out["conclusion"], justify="center"),
+        subtitle=out["method"], border_style="green"))
+
+
 @app.command()
 def control(run: str = typer.Option("", "--run"),
             image: str = typer.Option(..., "--image", "-i",
@@ -284,7 +314,7 @@ def anchor(run: str = typer.Option("", "--run"),
            pin: bool = typer.Option(False, "--pin", help="also pin the record to IPFS"),
            json_out: bool = typer.Option(False, "--json")):
     """Write the evidence hash to the registry contract."""
-    out = pipeline.anchor(run, chain, pin, emit=make_emitter(json_out))
+    out = pipeline.anchor(run, chain, pin, registry, emit=make_emitter(json_out))
     if not json_out and not out.get("already_anchored"):
         console.print(Panel(
             Group(
@@ -357,7 +387,9 @@ def run(image: str = typer.Option(..., "--image", "-i"),
         max_candidates: int = typer.Option(40, "--max-candidates"),
         no_cache: bool = typer.Option(False, "--no-cache"),
         no_proof: bool = typer.Option(False, "--no-proof",
-                                      help="skip the zero-knowledge proof stage")):
+                                      help="skip the zero-knowledge proof stage"),
+        registry: str = typer.Option("", "--registry",
+                                     help="v1 or v2; defaults to v2 when a proof exists")):
     """Run every stage: scan, search, extract, prove, anchor, verify."""
     emit = make_emitter(False)
     face = pipeline.scan(image, engine, "", emit=emit)
@@ -369,7 +401,7 @@ def run(image: str = typer.Option(..., "--image", "-i"),
     pipeline.extract(rid, use_browser=not no_browser, emit=emit)
     if not no_proof:
         pipeline.prove(rid, emit=emit)
-    pipeline.anchor(rid, chain, pin, emit=emit)
+    pipeline.anchor(rid, chain, pin, registry, emit=emit)
     report = pipeline.verify(rid, chain, "", False, emit=emit)
     console.print(check_table(report))
     style = "bold green" if report["verdict"] == "VERIFIED" else "bold red"
@@ -382,11 +414,12 @@ def run(image: str = typer.Option(..., "--image", "-i"),
 
 @app.command()
 def deploy(chain: str = typer.Option(config.DEFAULT_CHAIN if config.DEFAULT_CHAIN != "local"
-                                      else "base-sepolia", "--chain")):
-    """Deploy the registry contract and record the address."""
+                                      else "base-sepolia", "--chain"),
+           registry: str = typer.Option("v2", "--registry", help="v1 or v2")):
+    """Deploy the registry contract (and, for v2, its proof verifier)."""
     from .chain.client import ChainClient
 
-    c = ChainClient(chain)
+    c = ChainClient(chain, registry=registry)
     console.print(f"deploying from {c.sender} (balance {c.balance_eth:.6f} ETH) via {c.rpc_url}")
     info = c.deploy()
     console.print(Panel(Group(*[Text(f"{k:<18} {v}") for k, v in info.items()]),

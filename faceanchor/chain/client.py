@@ -18,6 +18,7 @@ from web3 import Web3
 from .. import config
 from ..canonical import iso
 from ..errors import ChainError
+from . import contract as contract_mod
 from .contract import load_artifact
 
 RECEIPT_TIMEOUT = 90
@@ -40,9 +41,12 @@ def _local_web3():
 
 
 class ChainClient:
-    def __init__(self, chain_name: str, private_key: str | None = None):
+    def __init__(self, chain_name: str, private_key: str | None = None,
+                 registry: str = "v1"):
         self.chain = config.get_chain(chain_name)
-        self.artifact = load_artifact()
+        self.registry_version = registry
+        self.contract_def = contract_mod.resolve(registry)
+        self.artifact = load_artifact(self.contract_def)
         self.rpc_url = ""
         self.account = None
         self._key = (private_key if private_key is not None else config.PRIVATE_KEY) or ""
@@ -139,15 +143,27 @@ class ChainClient:
     # --- deploy -----------------------------------------------------------------
 
     def deploy(self) -> dict:
+        verifier_address = ""
+        constructor_args: tuple = ()
+        if self.registry_version == "v2":
+            # V2 calls out to the snarkjs-generated verifier, so that has to
+            # exist first and its address is constructor-injected.
+            va = load_artifact(contract_mod.VERIFIER)
+            vf = self.w3.eth.contract(abi=va["abi"], bytecode=va["bytecode"])
+            vr = self._send(vf.constructor())
+            verifier_address = vr["contractAddress"]
+            constructor_args = (Web3.to_checksum_address(verifier_address),)
+
         factory = self.w3.eth.contract(
             abi=self.artifact["abi"], bytecode=self.artifact["bytecode"]
         )
-        receipt = self._send(factory.constructor())
+        receipt = self._send(factory.constructor(*constructor_args))
         address = receipt["contractAddress"]
         tx_hash = Web3.to_hex(receipt["transactionHash"])
         info = {
             "chain": self.chain.name,
             "chain_id": self.chain.chain_id,
+            "registry": self.registry_version,
             "contract": address,
             "deploy_tx": tx_hash,
             "deploy_block": receipt["blockNumber"],
@@ -156,6 +172,9 @@ class ChainClient:
             "explorer_address": self.chain.addr_url(address),
             "explorer_tx": self.chain.tx_url(tx_hash),
         }
+        if verifier_address:
+            info["verifier"] = verifier_address
+            info["explorer_verifier"] = self.chain.addr_url(verifier_address)
         if self.chain.is_local:
             global _LOCAL_DEPLOYMENT
             _LOCAL_DEPLOYMENT = info
@@ -163,9 +182,16 @@ class ChainClient:
             self.save_deployment(info)
         return info
 
+    @property
+    def deployment_path(self) -> Path:
+        # v1 keeps the original filename so the committed demo record and every
+        # README link stay valid; v2 gets its own file beside it.
+        suffix = "" if self.registry_version == "v1" else f"-{self.registry_version}"
+        return config.DEPLOYMENTS_DIR / f"{self.chain.name}{suffix}.json"
+
     def save_deployment(self, info: dict) -> Path:
         config.DEPLOYMENTS_DIR.mkdir(parents=True, exist_ok=True)
-        p = config.DEPLOYMENTS_DIR / f"{self.chain.name}.json"
+        p = self.deployment_path
         p.write_text(json.dumps(info, indent=2) + "\n", encoding="utf-8")
         return p
 
@@ -175,14 +201,17 @@ class ChainClient:
             # --chain local must happen in one command (`run`, or the
             # dashboard). Separate stage invocations should use a public chain.
             return _LOCAL_DEPLOYMENT
-        if config.CONTRACT_ADDRESS:
+        # CONTRACT_ADDRESS pins v1 only: a v2 address also needs its verifier,
+        # so an env override there would silently produce a half-configured
+        # deployment.
+        if config.CONTRACT_ADDRESS and self.registry_version == "v1":
             return {
                 "contract": config.CONTRACT_ADDRESS,
                 "chain": self.chain.name,
                 "chain_id": self.chain.chain_id,
                 "deploy_block": 0,
             }
-        p = config.DEPLOYMENTS_DIR / f"{self.chain.name}.json"
+        p = self.deployment_path
         if p.exists():
             return json.loads(p.read_text(encoding="utf-8"))
         return None
@@ -191,14 +220,33 @@ class ChainClient:
 
     def anchor(self, address: str, *, record_hash: str, input_image_sha256: str,
                face_commitment: str, post_url_hash: str, post_image_sha256: str,
-               input_phash: int, similarity_bps: int, evidence_uri: str) -> dict:
+               input_phash: int, similarity_bps: int, evidence_uri: str,
+               proof: dict | None = None) -> dict:
         c = self.contract(address)
-        fn = c.functions.anchor(
-            _b32(record_hash), _b32(input_image_sha256), _b32(face_commitment),
-            _b32(post_url_hash), _b32(post_image_sha256),
-            int(input_phash) & 0xFFFFFFFFFFFFFFFF, int(similarity_bps) & 0xFFFF,
-            evidence_uri,
-        )
+        if self.registry_version == "v2":
+            if not proof:
+                raise ChainError(
+                    "the v2 registry will not accept a record without a proof. "
+                    "Run `python -m faceanchor prove` first, or anchor against "
+                    "--registry v1."
+                )
+            claim = (
+                _b32(record_hash), _b32(input_image_sha256), _b32(face_commitment),
+                _b32(post_url_hash), _b32(post_image_sha256),
+                int(input_phash) & 0xFFFFFFFFFFFFFFFF, int(similarity_bps) & 0xFFFF,
+                evidence_uri,
+            )
+            fn = c.functions.anchor(
+                claim,
+                (proof["a"], proof["b"], proof["c"], proof["public_signals"]),
+            )
+        else:
+            fn = c.functions.anchor(
+                _b32(record_hash), _b32(input_image_sha256), _b32(face_commitment),
+                _b32(post_url_hash), _b32(post_image_sha256),
+                int(input_phash) & 0xFFFFFFFFFFFFFFFF, int(similarity_bps) & 0xFFFF,
+                evidence_uri,
+            )
         receipt = self._send(fn)
         tx_hash = Web3.to_hex(receipt["transactionHash"])
         logs = c.events.Anchored().process_receipt(receipt)
@@ -219,6 +267,85 @@ class ChainClient:
             "event": _event_to_dict(logs[0]["args"]) if logs else {},
             "anchored_at_local": iso(),
         }
+
+    def error_names(self) -> dict[str, str]:
+        """4-byte selector -> custom error name, taken from the ABI."""
+        from eth_utils import function_signature_to_4byte_selector
+
+        out = {}
+        for entry in self.artifact["abi"]:
+            if entry.get("type") != "error":
+                continue
+            sig = f"{entry['name']}({','.join(i['type'] for i in entry['inputs'])})"
+            out["0x" + function_signature_to_4byte_selector(sig).hex()] = entry["name"]
+        return out
+
+    def dry_run_anchor(self, address: str, *, record_hash: str, input_image_sha256: str,
+                       face_commitment: str, post_url_hash: str, post_image_sha256: str,
+                       input_phash: int, similarity_bps: int, evidence_uri: str,
+                       proof: dict) -> tuple[bool, str]:
+        """Ask the chain whether it *would* accept this record, spending nothing.
+
+        eth_call executes the contract against current state and discards the
+        result, so a rejection costs no gas and writes nothing. That is what
+        makes the forgery demo safe to run live on a public network.
+        """
+        c = self.contract(address)
+        claim = (
+            _b32(record_hash), _b32(input_image_sha256), _b32(face_commitment),
+            _b32(post_url_hash), _b32(post_image_sha256),
+            int(input_phash) & 0xFFFFFFFFFFFFFFFF, int(similarity_bps) & 0xFFFF,
+            evidence_uri,
+        )
+        fn = c.functions.anchor(
+            claim, (proof["a"], proof["b"], proof["c"], proof["public_signals"])
+        )
+        try:
+            fn.call({"from": self.sender})
+            return True, ""
+        except Exception as exc:  # noqa: BLE001 - any revert is a "no"
+            name = self._decode_revert(exc)
+            return False, name or type(exc).__name__
+
+    def _decode_revert(self, exc: Exception) -> str:
+        """Map a revert back to the custom error the contract declared.
+
+        The two backends disagree on shape: a public RPC returns a hex string,
+        while eth-tester embeds raw bytes whose repr escapes only unprintable
+        characters (0x7ca55c77 renders as b'|\\xa5\\\\w'), so matching on text
+        is unreliable. Pull the bytes out and compare selectors instead.
+        """
+        import ast
+        import re
+
+        names = self.error_names()
+        blob = str(exc)
+
+        # Public RPCs: a 0x-prefixed hex payload somewhere in the message.
+        for m in re.findall(r"0x[0-9a-fA-F]{8,}", blob):
+            if m[:10].lower() in names:
+                return names[m[:10].lower()]
+
+        # eth-tester: a bytes literal we can parse back into real bytes. The
+        # delimiter is captured and back-referenced because the payload itself
+        # can contain a quote -- an ABI-encoded 9999 ends in \x27, which is "'"
+        # and would otherwise close the literal early.
+        for delim, body in re.findall(r"b(['\"])((?:\\.|(?!\1)[^\\])*)\1", blob):
+            try:
+                raw = ast.literal_eval(f"b{delim}{body}{delim}")
+            except (ValueError, SyntaxError):
+                continue
+            if isinstance(raw, (bytes, bytearray)) and len(raw) >= 4:
+                sel = "0x" + bytes(raw[:4]).hex()
+                if sel in names:
+                    return names[sel]
+
+        data = getattr(exc, "data", None)
+        if isinstance(data, (bytes, bytearray)) and len(data) >= 4:
+            return names.get("0x" + bytes(data[:4]).hex(), "")
+        if isinstance(data, str) and data.startswith("0x"):
+            return names.get(data[:10].lower(), "")
+        return ""
 
     def _block_timestamp(self, block_number: int, attempts: int = 4) -> int:
         """Read a block's timestamp, tolerating a lagging RPC node.
