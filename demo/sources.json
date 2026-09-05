@@ -1,0 +1,32 @@
+{
+  "Sundar_Pichai": {
+    "page": "https://en.wikipedia.org/wiki/Sundar_Pichai",
+    "image": "https://upload.wikimedia.org/wikipedia/commons/c/c3/Sundar_Pichai_-_2023_%28cropped%29.jpg?utm_source=en.wikipedia.org&utm_campaign=api&utm_content=thumbnail_unscaled",
+    "bytes": 527485
+  },
+  "Satya_Nadella": {
+    "page": "https://en.wikipedia.org/wiki/Satya_Nadella",
+    "image": "https://upload.wikimedia.org/wikipedia/commons/7/78/MS-Exec-Nadella-Satya-2017-08-31-22_%28cropped%29.jpg?utm_source=en.wikipedia.org&utm_campaign=api&utm_content=thumbnail_unscaled",
+    "bytes": 3640304
+  },
+  "Virat_Kohli": {
+    "page": "https://en.wikipedia.org/wiki/Virat_Kohli",
+    "image": "https://upload.wikimedia.org/wikipedia/commons/e/ef/Virat_Kohli_during_the_India_vs_Aus_4th_Test_match_at_Narendra_Modi_Stadium_on_09_March_2023.jpg?utm_source=en.wikipedia.org&utm_campaign=api&utm_content=thumbnail_unscaled",
+    "bytes": 147195
+  },
+  "Elon_Musk": {
+    "page": "https://en.wikipedia.org/wiki/Elon_Musk",
+    "image": "https://upload.wikimedia.org/wikipedia/commons/5/5e/Elon_Musk_-_54820081119_%28cropped%29.jpg?utm_source=en.wikipedia.org&utm_campaign=api&utm_content=thumbnail_unscaled",
+    "bytes": 6554477
+  },
+  "Lionel_Messi": {
+    "page": "https://en.wikipedia.org/wiki/Lionel_Messi",
+    "image": "https://upload.wikimedia.org/wikipedia/commons/c/c8/Leo_Messi_Argentina_v_Egypt_7_July_2026-1.jpg?utm_source=en.wikipedia.org&utm_campaign=api&utm_content=thumbnail_unscaled",
+    "bytes": 5041148
+  },
+  "Sam_Altman": {
+    "page": "https://en.wikipedia.org/wiki/Sam_Altman",
+    "image": "https://upload.wikimedia.org/wikipedia/commons/5/5a/Meeting_with_Masayoshi_Son_and_Sam_Altman_%28February_3%2C_2025%29_%283x4_cropped_on_Altman%29.jpg?utm_source=en.wikipedia.org&utm_campaign=api&utm_content=thumbnail_unscaled",
+    "bytes": 95050
+  }
+}

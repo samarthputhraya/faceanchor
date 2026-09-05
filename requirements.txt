@@ -1,0 +1,37 @@
+# FaceAnchor runtime deps — all pure/binary wheels for cp312 win_amd64 (verified 2026-09-05)
+# NEVER install web3[tester] or eth-tester[py-evm]: they pull safe-pysha3, which has no
+# Windows wheel and needs MSVC. Install py-evm explicitly instead (done below).
+
+# --- face detection + embedding ---
+insightface==1.0.1
+onnxruntime==1.29.0
+opencv-python==4.14.0.94
+numpy>=2,<3
+pillow==12.3.0
+imagehash==4.3.2
+
+# --- web / extraction ---
+requests
+beautifulsoup4
+lxml
+
+# --- chain ---
+web3==7.16.0
+eth-tester==0.13.0b1
+py-evm==0.12.1b1
+py-solc-x==2.0.5
+
+# --- cli / config ---
+typer
+rich
+pydantic>=2,<3
+python-dotenv==1.2.3
+
+# --- api (ui backend) ---
+fastapi
+uvicorn
+sse-starlette
+python-multipart
+
+# --- dev ---
+pytest

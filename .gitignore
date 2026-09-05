@@ -1,0 +1,35 @@
+# secrets — NEVER commit
+.env
+*.pem
+*.key
+
+# python
+.venv/
+venv/
+__pycache__/
+*.py[cod]
+.pytest_cache/
+*.egg-info/
+build/
+dist/
+
+# models (large, downloaded on first run)
+models/*.onnx
+models/*.zip
+
+# biometric material — must never leave the machine
+evidence/**/face_secret.json
+evidence/**/embedding.npy
+
+# runtime evidence (only evidence/demo/ is committed, force-added)
+evidence/runs/
+
+# node / ui
+ui/node_modules/
+ui/dist/
+ui/.vite/
+
+# os
+Thumbs.db
+.DS_Store
+desktop.ini
