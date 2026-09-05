@@ -21,6 +21,21 @@ from .contract import load_artifact
 
 RECEIPT_TIMEOUT = 240
 
+# The in-process EVM lives in memory, so every ChainClient("local") must share
+# one instance. Without this, anchor() deploys onto a chain that verify() never
+# sees, and the record vanishes between stages.
+_LOCAL_W3 = None
+_LOCAL_DEPLOYMENT: dict | None = None
+
+
+def _local_web3():
+    global _LOCAL_W3
+    if _LOCAL_W3 is None:
+        from web3 import EthereumTesterProvider
+
+        _LOCAL_W3 = Web3(EthereumTesterProvider())
+    return _LOCAL_W3
+
 
 class ChainError(RuntimeError):
     pass
@@ -35,9 +50,7 @@ class ChainClient:
         self._key = (private_key if private_key is not None else config.PRIVATE_KEY) or ""
 
         if self.chain.is_local:
-            from web3 import EthereumTesterProvider
-
-            self.w3 = Web3(EthereumTesterProvider())
+            self.w3 = _local_web3()
             self.sender = self.w3.eth.accounts[0]
             self.rpc_url = "in-process (eth-tester / py-evm)"
         else:
@@ -130,7 +143,10 @@ class ChainClient:
             "explorer_address": self.chain.addr_url(address),
             "explorer_tx": self.chain.tx_url(tx_hash),
         }
-        if not self.chain.is_local:
+        if self.chain.is_local:
+            global _LOCAL_DEPLOYMENT
+            _LOCAL_DEPLOYMENT = info
+        else:
             self.save_deployment(info)
         return info
 
@@ -141,6 +157,11 @@ class ChainClient:
         return p
 
     def load_deployment(self) -> dict | None:
+        if self.chain.is_local:
+            # Memory chains cannot outlive the process, so a run against
+            # --chain local must happen in one command (`run`, or the
+            # dashboard). Separate stage invocations should use a public chain.
+            return _LOCAL_DEPLOYMENT
         if config.CONTRACT_ADDRESS:
             return {
                 "contract": config.CONTRACT_ADDRESS,

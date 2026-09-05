@@ -106,7 +106,8 @@ def scan(image_path: str | Path, engine_name: str = "", run_id: str = "",
 # --- stage 2: search ---------------------------------------------------------------
 
 def search(run_id: str = "", engines: str = "lens", image_url: str = "",
-           use_cache: bool = True, emit: Emit = _noop) -> dict:
+           use_cache: bool = True, max_candidates: int = cand_mod.DEFAULT_MAX_SCORED,
+           emit: Emit = _noop) -> dict:
     d = config.resolve_run(run_id)
     face_json = read_json(d / "face.json")
     engine = get_engine(face_json.get("engine", "").split("/")[0] or config.FACE_ENGINE)
@@ -183,8 +184,12 @@ def search(run_id: str = "", engines: str = "lens", image_url: str = "",
     emit(StageEvent("log", "search",
                     f"{len(all_hits)} results, {len(cands)} of them social posts"))
 
+    if len(cands) > max_candidates:
+        emit(StageEvent("log", "search",
+                        f"scoring the first {max_candidates} of {len(cands)}; the rest "
+                        f"stay in candidates.json marked SKIPPED"))
     cands = cand_mod.score_candidates(
-        cands, query_emb, engine, d,
+        cands, query_emb, engine, d, limit=max_candidates,
         emit=lambda c: emit(StageEvent("candidate", "search", c.url, c.as_dict())),
     )
     hop = 1
@@ -539,6 +544,17 @@ def verify(run_id: str = "", chain: str = "", tamper_field: str = "",
     anchor_info = read_json(d / "anchor.json")
     chain = chain or anchor_info.get("chain") or anchor_info["deployment"]["chain"]
     contract = anchor_info["deployment"]["contract"]
+
+    if config.get_chain(chain).is_local:
+        from .chain.client import _LOCAL_DEPLOYMENT
+
+        if _LOCAL_DEPLOYMENT is None:
+            raise SystemExit(
+                "the in-process chain only exists while one command runs, so a "
+                "record anchored by an earlier command is gone. Use "
+                "`python -m faceanchor run --chain local` to do every stage at "
+                "once, or anchor on a public chain with --chain base-sepolia."
+            )
 
     emit(StageEvent("stage_start", "verify",
                     f"chain {chain} contract {contract}"

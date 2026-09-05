@@ -18,7 +18,8 @@ from .. import config
 from ..canonical import sha256_bytes
 from .base import Hit, canonical_url, platform_of
 
-MATCH, WEAK, REJECT, NO_FACE, FETCH_FAIL = "MATCH", "WEAK", "REJECT", "NO_FACE", "FETCH_FAIL"
+MATCH, WEAK, REJECT = "MATCH", "WEAK", "REJECT"
+NO_FACE, FETCH_FAIL, SKIPPED = "NO_FACE", "FETCH_FAIL", "SKIPPED"
 
 
 @dataclass
@@ -93,9 +94,19 @@ def verdict_for(similarity: float, engine) -> str:
     return REJECT
 
 
+DEFAULT_MAX_SCORED = 40
+
+
 def score_candidates(candidates: list[Candidate], query_embedding: np.ndarray, engine,
-                     run_dir: Path, emit=None, timeout: int = 25) -> list[Candidate]:
-    """Download each candidate thumbnail, embed every face, keep the best cosine."""
+                     run_dir: Path, emit=None, timeout: int = 25,
+                     limit: int = DEFAULT_MAX_SCORED) -> list[Candidate]:
+    """Download each candidate thumbnail, embed every face, keep the best cosine.
+
+    A popular subject can return well over a hundred social results, and each
+    one costs a download plus a detection pass. Scoring is capped so a run stays
+    watchable; anything skipped keeps the SKIPPED verdict and stays in the
+    output, because a silently truncated list would read as full coverage.
+    """
     # Imported here rather than at module scope: merging, ranking and name
     # identification are pure logic, so they stay importable (and testable)
     # without OpenCV or a face model installed.
@@ -105,7 +116,10 @@ def score_candidates(candidates: list[Candidate], query_embedding: np.ndarray, e
     thumbs.mkdir(parents=True, exist_ok=True)
     headers = {"User-Agent": config.BROWSER_UA}
 
-    for i, c in enumerate(candidates, 1):
+    skipped = candidates[limit:] if limit else []
+    for c in skipped:
+        c.verdict, c.note = SKIPPED, f"beyond the --max-candidates limit of {limit}"
+    for i, c in enumerate(candidates[:limit] if limit else candidates, 1):
         if not c.thumbnail_url:
             c.verdict, c.note = FETCH_FAIL, "no thumbnail url in search response"
         else:
@@ -138,7 +152,7 @@ def score_candidates(candidates: list[Candidate], query_embedding: np.ndarray, e
     return rerank(candidates)
 
 
-ORDER = {MATCH: 0, WEAK: 1, REJECT: 2, NO_FACE: 3, FETCH_FAIL: 4}
+ORDER = {MATCH: 0, WEAK: 1, REJECT: 2, NO_FACE: 3, FETCH_FAIL: 4, SKIPPED: 5}
 
 
 def rerank(candidates: list[Candidate]) -> list[Candidate]:

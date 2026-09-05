@@ -30,7 +30,7 @@ NEWLINE = "\n"
 
 VERDICT_STYLE = {
     "MATCH": "bold green", "WEAK": "yellow", "REJECT": "red",
-    "NO_FACE": "dim", "FETCH_FAIL": "dim red",
+    "NO_FACE": "dim", "FETCH_FAIL": "dim red", "SKIPPED": "dim",
 }
 STAGE_TITLE = {
     "scan": "1 SCAN  face detection and encoding",
@@ -150,10 +150,12 @@ def search(run: str = typer.Option("", "--run"),
            image_url: str = typer.Option("", "--image-url",
                                          help="public URL of the query image (else upload)"),
            no_cache: bool = typer.Option(False, "--no-cache", help="ignore the on-disk cache"),
+           max_candidates: int = typer.Option(40, "--max-candidates",
+                                              help="how many social results to face-check"),
            json_out: bool = typer.Option(False, "--json")):
     """Search the open web for this face and score every candidate."""
     out = pipeline.search(run, engines, image_url, use_cache=not no_cache,
-                          emit=make_emitter(json_out))
+                          max_candidates=max_candidates, emit=make_emitter(json_out))
     if not json_out:
         console.print(candidate_table(config.resolve_run(run) / "candidates.json"))
         console.print()
@@ -295,12 +297,14 @@ def run(image: str = typer.Option(..., "--image", "-i"),
         image_url: str = typer.Option("", "--image-url"),
         pin: bool = typer.Option(False, "--pin"),
         no_browser: bool = typer.Option(False, "--no-browser"),
+        max_candidates: int = typer.Option(40, "--max-candidates"),
         no_cache: bool = typer.Option(False, "--no-cache")):
     """Run every stage: scan, search, extract, anchor, verify."""
     emit = make_emitter(False)
     face = pipeline.scan(image, engine, "", emit=emit)
     rid = face["run_id"]
-    pipeline.search(rid, engines, image_url, use_cache=not no_cache, emit=emit)
+    pipeline.search(rid, engines, image_url, use_cache=not no_cache,
+                    max_candidates=max_candidates, emit=emit)
     console.print(candidate_table(config.resolve_run(rid) / "candidates.json"))
     console.print()
     pipeline.extract(rid, use_browser=not no_browser, emit=emit)
