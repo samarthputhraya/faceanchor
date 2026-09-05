@@ -25,6 +25,7 @@ from .face.engine import cosine, crop, get_engine, largest, load_image, save_jpe
 from .search import candidates as cand_mod
 from .search import fallbacks, serpapi
 from .search.base import canonical_url
+from .zk import prover as zk_prover
 
 Emit = Callable[[StageEvent], None]
 
@@ -79,6 +80,18 @@ def scan(image_path: str | Path, engine_name: str = "", run_id: str = "",
                         f"photograph will match far better"))
 
     commitment, salt_hex, quantised = fingerprint.commit(face.embedding)
+
+    # A second, Poseidon commitment to the same vector. sha256 stays the record's
+    # commitment; Poseidon is what the zk circuit can prove cheaply. Fixing it
+    # here -- before any search runs -- is what stops it being retrofitted later
+    # to whatever the search happened to return.
+    zk_salt = zk_prover.new_salt()
+    zk_commitment = ""
+    try:
+        zk_commitment = zk_prover.commitment(quantised, zk_salt)
+    except zk_prover.ZkError as exc:
+        emit(StageEvent("log", "scan", f"no zk commitment for this run: {exc}"))
+
     input_sha = sha256_file(dest)
     ph = phash_hex(dest)
     h, w = img.shape[:2]
@@ -95,6 +108,10 @@ def scan(image_path: str | Path, engine_name: str = "", run_id: str = "",
         "det_score": round(float(face.det_score), 4),
         "commitment": commitment,
         "commitment_scheme": "sha256(faceanchor-v1 || salt32 || int8(embedding*127))",
+        "zk_commitment": zk_commitment or None,
+        "zk_commitment_scheme": (
+            "poseidon(pack31(int8(embedding*127) + 128) || salt31)" if zk_commitment else None
+        ),
         "threshold": {"match": engine.match_threshold, "weak": engine.weak_threshold,
                       "metric": "cosine"},
         "input": {"file": "input.jpg", "sha256": input_sha, "phash": ph,
@@ -104,7 +121,8 @@ def scan(image_path: str | Path, engine_name: str = "", run_id: str = "",
     write_json(d / "face.json", face_json)
     # Secret material stays out of git: it is what makes the commitment binding.
     write_json(d / "face_secret.json",
-               {"salt": salt_hex, "quantised_int8": quantised, "engine": engine.name})
+               {"salt": salt_hex, "quantised_int8": quantised, "engine": engine.name,
+                "zk_salt": zk_salt})
     np.save(d / "embedding.npy", face.embedding)
 
     emit(StageEvent("stage_end", "scan",
@@ -409,15 +427,45 @@ def extract(run_id: str = "", use_browser: bool = True, emit: Emit = _noop) -> d
     # post image is far more convincing than a 200px search thumbnail.
     similarity = float(best["similarity"])
     similarity_source = "search_thumbnail"
+    post_zk_commitment = ""
+    post_similarity = None
     if p.image_file:
         try:
             engine = get_engine(read_json(d / "face.json")["engine"].split("/")[0])
             engine.load()
             q = np.load(d / "embedding.npy")
             faces = engine.detect_and_embed(load_image(d / p.image_file))
-            sims = [cosine(q, f.embedding) for f in faces if f.embedding is not None]
-            if sims and max(sims) > similarity:
-                similarity, similarity_source = max(sims), p.image_source
+
+            # Keep the winning embedding, not just its score: it is the second
+            # input to the zk circuit, and it used to be discarded here.
+            best_emb, best_sim = None, -2.0
+            for f in faces:
+                if f.embedding is None:
+                    continue
+                s = cosine(q, f.embedding)
+                if s > best_sim:
+                    best_sim, best_emb = s, f.embedding
+
+            if best_emb is not None:
+                post_similarity = round(float(best_sim), 4)
+                np.save(d / "post_embedding.npy", best_emb)
+                secret = read_json(d / "face_secret.json")
+                _, post_salt, post_quantised = fingerprint.commit(best_emb)
+                post_zk_salt = zk_prover.new_salt()
+                try:
+                    post_zk_commitment = zk_prover.commitment(post_quantised, post_zk_salt)
+                except zk_prover.ZkError as exc:
+                    emit(StageEvent("log", "extract", f"no zk commitment for the post face: {exc}"))
+                write_json(d / "zk_secret.json", {
+                    "quantised_int8_a": secret["quantised_int8"],
+                    "zk_salt_a": secret.get("zk_salt", ""),
+                    "quantised_int8_b": post_quantised,
+                    "zk_salt_b": post_zk_salt,
+                    "sha256_salt_b": post_salt,
+                    "engine": engine.name,
+                })
+                if best_sim > similarity:
+                    similarity, similarity_source = best_sim, p.image_source
             p.image_phash = phash_hex(d / p.image_file)
         except Exception as exc:  # noqa: BLE001
             p.notes.append(f"post-image rescore failed: {type(exc).__name__}")
@@ -431,12 +479,63 @@ def extract(run_id: str = "", use_browser: bool = True, emit: Emit = _noop) -> d
         "similarity_source": similarity_source,
         "search_similarity": round(float(best["similarity"]), 4),
         "engines_agreeing": best.get("engines_agreeing", 1),
+        # The pair the zk proof is about: this face against post_image.jpg.
+        # It can differ from `similarity` when the search thumbnail scored
+        # higher than the full-size image, so it is reported separately rather
+        # than quietly overwriting the headline number.
+        "post_image_similarity": post_similarity,
+        "zk_commitment": post_zk_commitment or None,
     })
     write_json(d / "post.json", out)
     emit(StageEvent("stage_end", "extract",
                     f"{p.platform} | {p.author or 'unknown author'} | "
                     f"{p.posted_at or 'no date'} ({p.posted_at_source}) | "
                     f"image via {p.image_source}", out))
+    return out
+
+
+# --- stage 3b: prove ---------------------------------------------------------------
+
+def prove(run_id: str = "", emit: Emit = _noop) -> dict:
+    """Groth16-prove that the published similarity really is the cosine of the
+    two committed embeddings.  Costs no search quota."""
+    d = config.resolve_run(run_id, needs="post.json")
+    secret_path = d / "zk_secret.json"
+    if not secret_path.exists():
+        emit(StageEvent("error", "prove",
+                        "no zk_secret.json in this run: the post image produced no "
+                        "face to compare, so there is no pair to prove."))
+        raise SystemExit(config.EXIT_NO_MATCH)
+
+    secret = read_json(secret_path)
+    emit(StageEvent("stage_start", "prove", "groth16 over 512-d embeddings"))
+
+    try:
+        out = zk_prover.prove(d,
+                              secret["quantised_int8_a"], secret["zk_salt_a"],
+                              secret["quantised_int8_b"], secret["zk_salt_b"])
+    except zk_prover.ZkError as exc:
+        emit(StageEvent("error", "prove", str(exc)))
+        raise SystemExit(config.EXIT_ZK) from exc
+
+    # The proof is only meaningful if it is about the vectors we already
+    # published. Anything else is a proof about two numbers nobody committed to.
+    face = read_json(d / "face.json")
+    post = read_json(d / "post.json")
+    mismatches = []
+    if face.get("zk_commitment") and face["zk_commitment"] != out["commitment_a"]:
+        mismatches.append("scanned face")
+    if post.get("zk_commitment") and post["zk_commitment"] != out["commitment_b"]:
+        mismatches.append("post face")
+    if mismatches:
+        emit(StageEvent("error", "prove",
+                        f"the proof does not match the commitment published for the "
+                        f"{' and '.join(mismatches)}; refusing to continue."))
+        raise SystemExit(config.EXIT_ZK)
+
+    emit(StageEvent("stage_end", "prove",
+                    f"proved cosine {out['similarity']:.4f} "
+                    f"(dot {out['dot']}) without revealing either embedding", out))
     return out
 
 

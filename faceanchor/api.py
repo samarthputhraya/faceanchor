@@ -53,6 +53,7 @@ def _run_pipeline(run_id: str, image_path: Path, chain: str, engines: str,
         pipeline.scan(image_path, "", run_id, emit=emit)
         pipeline.search(run_id, engines, image_url, emit=emit)
         pipeline.extract(run_id, use_browser=use_browser, emit=emit)
+        pipeline.prove(run_id, emit=emit)
         pipeline.anchor(run_id, chain, emit=emit)
         pipeline.verify(run_id, chain, emit=emit)
     except SystemExit as exc:
@@ -135,7 +136,7 @@ async def run_state(run_id: str):
     d = config.EVIDENCE_ROOT / run_id
     out: dict = {"run_id": run_id, "done": RUNS.get(run_id, {}).get("done", not d.exists())}
     for name, key in (("face.json", "face"), ("candidates.json", "candidates"),
-                      ("post.json", "post"), ("anchor.json", "anchor"),
+                      ("post.json", "post"), ("zk.json", "zk"), ("anchor.json", "anchor"),
                       ("verify_log.json", "verify")):
         if (d / name).exists():
             out[key] = read_json(d / name)

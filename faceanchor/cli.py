@@ -53,8 +53,9 @@ STAGE_TITLE = {
     "scan": "1 SCAN  face detection and encoding",
     "search": "2 SEARCH  reverse image search across the open web",
     "extract": "3 EXTRACT  fetch the matched post",
-    "anchor": "4 ANCHOR  write the evidence hash on-chain",
-    "verify": "5 VERIFY  recompute and re-read from the chain",
+    "prove": "4 PROVE  zero-knowledge proof that the match is honest",
+    "anchor": "5 ANCHOR  write the evidence hash on-chain",
+    "verify": "6 VERIFY  recompute and re-read from the chain",
 }
 
 
@@ -221,6 +222,27 @@ def extract(run: str = typer.Option("", "--run"),
 
 
 @app.command()
+def prove(run: str = typer.Option("", "--run"),
+          json_out: bool = typer.Option(False, "--json")):
+    """Prove in zero knowledge that the published similarity is the real one."""
+    out = pipeline.prove(run, emit=make_emitter(json_out))
+    if not json_out:
+        console.print(Panel(
+            Group(
+                Text(f"scheme       {out['scheme']}  ({out['dimensions']}-d embeddings)"),
+                Text(f"commit A     {out['commitment_a'][:46]}...  (scanned face)"),
+                Text(f"commit B     {out['commitment_b'][:46]}...  (post face)"),
+                Text(f"dot          {out['dot']}"),
+                Text(f"norms        |A|^2 {out['norm_a']}   |B|^2 {out['norm_b']}"),
+                Text(f"similarity   {out['similarity']:.4f}  "
+                     f"({out['similarity_bps']} bps, derived only from the proven integers)"),
+                Text(""),
+                Text("proves       " + out["proves"], style="green"),
+                Text("does not     " + out["does_not_prove"], style="yellow"),
+            ), title="zero-knowledge proof", border_style="magenta"))
+
+
+@app.command()
 def control(run: str = typer.Option("", "--run"),
             image: str = typer.Option(..., "--image", "-i",
                                       help="a different person's photograph"),
@@ -333,8 +355,10 @@ def run(image: str = typer.Option(..., "--image", "-i"),
         pin: bool = typer.Option(False, "--pin"),
         no_browser: bool = typer.Option(False, "--no-browser"),
         max_candidates: int = typer.Option(40, "--max-candidates"),
-        no_cache: bool = typer.Option(False, "--no-cache")):
-    """Run every stage: scan, search, extract, anchor, verify."""
+        no_cache: bool = typer.Option(False, "--no-cache"),
+        no_proof: bool = typer.Option(False, "--no-proof",
+                                      help="skip the zero-knowledge proof stage")):
+    """Run every stage: scan, search, extract, prove, anchor, verify."""
     emit = make_emitter(False)
     face = pipeline.scan(image, engine, "", emit=emit)
     rid = face["run_id"]
@@ -343,6 +367,8 @@ def run(image: str = typer.Option(..., "--image", "-i"),
     console.print(candidate_table(config.resolve_run(rid) / "candidates.json"))
     console.print()
     pipeline.extract(rid, use_browser=not no_browser, emit=emit)
+    if not no_proof:
+        pipeline.prove(rid, emit=emit)
     pipeline.anchor(rid, chain, pin, emit=emit)
     report = pipeline.verify(rid, chain, "", False, emit=emit)
     console.print(check_table(report))

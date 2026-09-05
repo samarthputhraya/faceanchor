@@ -133,6 +133,7 @@ def resolve_run(run_id: str | None, needs: str = "") -> Path:
             "face.json": "scan --image <file>",
             "candidates.json": "search",
             "post.json": "extract",
+            "zk.json": "prove",
             "record.json": "anchor --chain <chain>",
             "anchor.json": "anchor --chain <chain>",
         }.get(needs, "an earlier stage")
@@ -148,4 +149,5 @@ EXIT_OK = 0
 EXIT_NO_MATCH = 2       # search found nothing above threshold, or verify mismatched
 EXIT_NO_FACE = 3
 EXIT_CHAIN = 4
+EXIT_ZK = 6             # proving failed, or a proof did not match its commitments
 EXIT_PROVIDER = 5
