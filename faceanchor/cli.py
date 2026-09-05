@@ -26,6 +26,7 @@ app = typer.Typer(
     help="Face scan -> genuine reverse image search -> tamper-evident on-chain record.",
 )
 console = Console()
+NEWLINE = "\n"
 
 VERDICT_STYLE = {
     "MATCH": "bold green", "WEAK": "yellow", "REJECT": "red",
@@ -180,6 +181,41 @@ def extract(run: str = typer.Option("", "--run"),
                      f"(from {out['similarity_source']}; "
                      f"search thumbnail scored {out['search_similarity']:.4f})"),
             ), title="matched post", border_style="cyan"))
+
+
+@app.command()
+def control(run: str = typer.Option("", "--run"),
+            image: str = typer.Option(..., "--image", "-i",
+                                      help="a different person's photograph"),
+            json_out: bool = typer.Option(False, "--json")):
+    """Score this run's candidates against a different face, as a control."""
+    out = pipeline.control(run, image, emit=make_emitter(json_out))
+    if json_out:
+        return
+    t = Table(title=f"the same posts, scored against {Path(image).name}",
+              title_style="bold", header_style="bold")
+    t.add_column("platform")
+    t.add_column("scanned face", justify="right")
+    t.add_column("control face", justify="right")
+    t.add_column("verdict")
+    t.add_column("post url", overflow="fold", max_width=52)
+    for r in out["rows"]:
+        t.add_row(r["platform"], f"{r['similarity_original']:.4f}",
+                  f"{r['similarity_control']:.4f}",
+                  Text(r["verdict_control"], style=VERDICT_STYLE.get(r["verdict_control"], "")),
+                  r["url"])
+    console.print(t)
+    ok = out["still_matching"] == 0
+    console.print(Panel(
+        Text(NEWLINE.join([
+            f"{out['originally_matched']} of {out['checked']} posts matched the scanned face.",
+            f"{out['still_matching']} of them match the control face.",
+            ("Same posts, same thresholds, same code. Only the reference face "
+             "changed, and every match disappeared."
+             if ok else "Some posts still match; inspect them individually."),
+        ]), justify="center"),
+        border_style="bold green" if ok else "bold yellow",
+        style="bold green" if ok else "bold yellow"))
 
 
 @app.command()

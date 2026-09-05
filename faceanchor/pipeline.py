@@ -269,6 +269,70 @@ def search(run_id: str = "", engines: str = "lens", image_url: str = "",
     return summary
 
 
+# --- control: score one run's candidates against a different face ------------------
+
+def control(run_id: str = "", other_image: str = "", emit: Emit = _noop) -> dict:
+    """Re-score an existing run's candidates against a different person's face.
+
+    A search engine that keeps returning the right person is doing its job, so a
+    normal run can legitimately contain no rejections. That leaves an obvious
+    question: is the comparison doing anything at all? This answers it. The
+    posts, the thumbnails and the code are identical; only the reference face
+    changes, and everything should now be rejected.
+
+    Uses the thumbnails already on disk, so it costs no search quota.
+    """
+    d = config.resolve_run(run_id)
+    cands = read_json(d / "candidates.json")
+    engine = get_engine(read_json(d / "face.json")["engine"].split("/")[0])
+    engine.load()
+
+    emit(StageEvent("stage_start", "control",
+                    f"re-scoring {len(cands['candidates'])} candidates against "
+                    f"{Path(other_image).name}"))
+    faces = engine.detect_and_embed(load_image(other_image))
+    face = largest(faces)
+    if face is None:
+        raise SystemExit(config.EXIT_NO_FACE)
+
+    rows, flipped = [], 0
+    for c in cands["candidates"]:
+        if not c.get("thumbnail_file"):
+            continue
+        thumb = d / c["thumbnail_file"]
+        if not thumb.exists():
+            continue
+        sims = [cosine(face.embedding, f.embedding)
+                for f in engine.detect_and_embed(load_image(thumb))
+                if f.embedding is not None]
+        sim = max(sims) if sims else -1.0
+        verdict = cand_mod.verdict_for(sim, engine) if sims else "NO_FACE"
+        if c["verdict"] == "MATCH" and verdict != "MATCH":
+            flipped += 1
+        rows.append({"url": c["url"], "platform": c["platform"],
+                     "similarity_original": c["similarity"],
+                     "similarity_control": round(sim, 4),
+                     "verdict_original": c["verdict"], "verdict_control": verdict})
+        emit(StageEvent("candidate", "control", c["url"], {
+            "url": c["url"], "platform": c["platform"], "verdict": verdict,
+            "similarity": round(sim, 4), "faces_found": len(sims),
+            "engines_agreeing": c.get("engines_agreeing", 1),
+        }))
+
+    out = {"run_id": d.name, "control_image": str(other_image),
+           "control_face_det_score": round(float(face.det_score), 4),
+           "checked": len(rows),
+           "originally_matched": sum(1 for r in rows if r["verdict_original"] == "MATCH"),
+           "still_matching": sum(1 for r in rows if r["verdict_control"] == "MATCH"),
+           "flipped_to_rejected": flipped,
+           "threshold": engine.match_threshold, "rows": rows}
+    write_json(d / "control.json", out)
+    emit(StageEvent("stage_end", "control",
+                    f"{out['originally_matched']} matched the scanned face, "
+                    f"{out['still_matching']} match the control face", out))
+    return out
+
+
 # --- stage 3: extract --------------------------------------------------------------
 
 def extract(run_id: str = "", use_browser: bool = True, emit: Emit = _noop) -> dict:

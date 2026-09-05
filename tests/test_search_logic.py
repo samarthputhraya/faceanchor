@@ -100,3 +100,27 @@ def test_hop2_targets_the_platforms_we_can_actually_read():
     assert all(q.startswith('"Sundar Pichai" site:') for q in qs)
     assert any("instagram.com" in q for q in qs)
     assert any("linkedin.com/posts" in q for q in qs)
+
+
+def test_verdict_thresholds_follow_the_engine():
+    """Each engine carries its own calibration; they must never be mixed."""
+    from faceanchor.search.candidates import verdict_for
+
+    e = FakeEngine()
+    assert verdict_for(0.95, e) == MATCH
+    assert verdict_for(0.40, e) == MATCH
+    assert verdict_for(0.39, e) == WEAK
+    assert verdict_for(0.30, e) == WEAK
+    assert verdict_for(0.29, e) == REJECT
+    assert verdict_for(-0.02, e) == REJECT
+
+
+def test_a_control_face_should_reject_what_the_real_face_matched():
+    """The shape the control command relies on: same posts, different reference."""
+    from faceanchor.search.candidates import verdict_for
+
+    e = FakeEngine()
+    scanned = [0.9324, 0.7824, 0.6852, 0.5645]
+    control = [0.1334, 0.0652, 0.0327, -0.0165]
+    assert all(verdict_for(s, e) == MATCH for s in scanned)
+    assert all(verdict_for(c, e) == REJECT for c in control)

@@ -225,6 +225,23 @@ makes that checkable rather than asking to be believed.
   fallback that invents a match.
 - Running a different photograph produces a different candidate set; running a
   private individual's photograph is expected to produce no match at all.
+- A **control run** answers the obvious objection. A search engine that keeps
+  returning the right person leaves a normal run with no rejections, which
+  makes it fair to ask whether the comparison does anything at all:
+
+  ```bash
+  python -m faceanchor control --run <kohli_run> --image demo/sundar_pichai.jpg
+  ```
+
+  The same 20 posts, the same thumbnails on disk, the same thresholds and the
+  same code, with only the reference face swapped:
+
+  | | scored against the scanned face | scored against a different face |
+  | --- | --- | --- |
+  | posts matching | 20 of 20 | 0 of 20 |
+  | score range | 0.5645 to 0.9324 | -0.0165 to 0.1334 |
+
+  It costs no search quota, because it re-uses the thumbnails already fetched.
 
 ## Face matching
 
