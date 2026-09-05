@@ -131,8 +131,17 @@ def score_candidates(candidates: list[Candidate], query_embedding: np.ndarray, e
         if emit:
             emit(c)
 
-    order = {MATCH: 0, WEAK: 1, REJECT: 2, NO_FACE: 3, FETCH_FAIL: 4}
-    candidates.sort(key=lambda c: (order.get(c.verdict, 9), -c.similarity, -c.engines_agreeing))
+    return rerank(candidates)
+
+
+ORDER = {MATCH: 0, WEAK: 1, REJECT: 2, NO_FACE: 3, FETCH_FAIL: 4}
+
+
+def rerank(candidates: list[Candidate]) -> list[Candidate]:
+    """Best verdict first, then similarity, then how many engines agreed."""
+    candidates.sort(
+        key=lambda c: (ORDER.get(c.verdict, 9), -c.similarity, -c.engines_agreeing)
+    )
     for i, c in enumerate(candidates, 1):
         c.rank = i
     return candidates

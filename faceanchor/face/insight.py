@@ -6,7 +6,10 @@ Pure-wheel since insightface 1.0 (no compiler needed).  Models auto-download to
 
 from __future__ import annotations
 
+import contextlib
+import io
 import os
+import warnings
 from functools import lru_cache
 from pathlib import Path
 
@@ -21,16 +24,24 @@ MODEL_DIR = Path(os.path.expanduser("~")) / ".insightface" / "models" / MODEL_PA
 
 @lru_cache(maxsize=1)
 def _app():
+    """Load buffalo_l once, quietly.
+
+    insightface prints a dozen loader lines to stdout and skimage raises a
+    deprecation warning from inside its alignment code; neither is actionable
+    and both would clutter the pipeline output.
+    """
     from insightface.app import FaceAnalysis
 
-    app = FaceAnalysis(
-        name=MODEL_PACK,
-        providers=["CPUExecutionProvider"],
-        allowed_modules=["detection", "recognition"],
-    )
-    # ctx_id<0 forces CPU; an explicit det_size avoids insightface 1.0's "Auto"
-    # mode, which runs the detector twice (128 and 640) for double the cost.
-    app.prepare(ctx_id=-1, det_thresh=0.5, det_size=(640, 640))
+    with contextlib.redirect_stdout(io.StringIO()):
+        warnings.filterwarnings("ignore", category=FutureWarning, module="insightface")
+        app = FaceAnalysis(
+            name=MODEL_PACK,
+            providers=["CPUExecutionProvider"],
+            allowed_modules=["detection", "recognition"],
+        )
+        # ctx_id<0 forces CPU; an explicit det_size avoids insightface 1.0's
+        # "Auto" mode, which runs the detector at 128 and 640 for double cost.
+        app.prepare(ctx_id=-1, det_thresh=0.5, det_size=(640, 640))
     return app
 
 
@@ -62,7 +73,10 @@ class InsightFaceEngine:
         app = _app()
         img, scale = prepare(image_bgr)
         faces: list[Face] = []
-        for f in app.get(img):
+        with warnings.catch_warnings():
+            warnings.simplefilter("ignore", FutureWarning)
+            detected = app.get(img)
+        for f in detected:
             emb = np.asarray(f.normed_embedding, dtype=np.float32)
             faces.append(
                 Face(

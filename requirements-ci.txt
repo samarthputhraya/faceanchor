@@ -1,0 +1,12 @@
+# Subset used by CI: hashing, chain and search logic. No face models, no keys.
+numpy>=2,<3
+pillow==12.3.0
+imagehash==4.3.2
+requests
+beautifulsoup4
+web3==7.16.0
+eth-tester==0.13.0b1
+py-evm==0.12.1b1
+py-solc-x==2.0.5
+python-dotenv==1.2.3
+pytest

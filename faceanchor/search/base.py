@@ -80,7 +80,14 @@ class SearchProvider(Protocol):
     def lens(self, image_url: str = "", image_id: str = "", kind: str = "visual_matches") -> RawSearch: ...
 
 
-_TRACKING = re.compile(r"^(utm_|fbclid|igshid|gclid|si$|feature$)", re.I)
+# Share and analytics parameters that identify a referral, not a post. Anything
+# not listed here is preserved, so identifying params (v=, fbid=) survive.
+_TRACKING = re.compile(
+    r"^(?:utm_[a-z_]*|fbclid|igshid|igsh|gclid|mc_[a-z]+|ref|ref_src|ref_url|"
+    r"refsource|source|share_id|share_app_id|sender_device|is_from_webapp|"
+    r"web_id|correlation_id|spm|rdt|feature|app|si|s|t|_r|_d|__[a-z]+)$",
+    re.I,
+)
 
 
 def canonical_url(url: str) -> str:
