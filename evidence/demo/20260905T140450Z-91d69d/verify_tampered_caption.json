@@ -1,0 +1,56 @@
+{
+  "chain": "base-sepolia",
+  "chain_id": 84532,
+  "contract": "0xAFeB0eDaC32b4fD7710418211619ddE36C735D43",
+  "event": null,
+  "event_found": false,
+  "exit_code": 2,
+  "explorer_tx": "https://sepolia.basescan.org/tx/0xb20ba2b7ffd38b35f366e04799788a088b3c4728f23472442e7212418fd05f3f",
+  "local_checks": [
+    {
+      "field": "input image sha256",
+      "in_record": "4aab1dffefe1960940b5ea2d55fb79dcc04a3cfdb8dbe298b102dd679610ac67",
+      "ok": true,
+      "recomputed": "4aab1dffefe1960940b5ea2d55fb79dcc04a3cfdb8dbe298b102dd679610ac67"
+    },
+    {
+      "field": "input pHash",
+      "in_record": "a8a01be7a10fbed1",
+      "ok": true,
+      "recomputed": "a8a01be7a10fbed1"
+    },
+    {
+      "field": "post image sha256",
+      "in_record": "bff202835ac0583e180381e3437f8ffbfa5dc81f230758841390565af98b9725",
+      "ok": true,
+      "recomputed": "bff202835ac0583e180381e3437f8ffbfa5dc81f230758841390565af98b9725"
+    },
+    {
+      "field": "face commitment",
+      "in_record": "c9b38d4fdfbe883eca71ec9ccdbd5caaf000ec027ddfdeb65ffc97f7383e9478",
+      "ok": true,
+      "recomputed": "c9b38d4fdfbe883eca71ec9ccdbd5caaf000ec027ddfdeb65ffc97f7383e9478"
+    },
+    {
+      "field": "record hash (sha256 of canonical record.json)",
+      "in_record": "2f72332c7f45fd35d73ada584dee1bc96e58d66a6cdd9e6d00558b75e72bdb4b",
+      "ok": false,
+      "recomputed": "b602431271d33a4afdc9b37aee63819ab039fd421295bfa3da125e08bc13d4cd"
+    }
+  ],
+  "onchain": {
+    "face_ok": false,
+    "found": false,
+    "image_ok": false,
+    "ok": false,
+    "post_image_ok": false,
+    "post_ok": false
+  },
+  "onchain_record": {},
+  "record_hash_anchored": "2f72332c7f45fd35d73ada584dee1bc96e58d66a6cdd9e6d00558b75e72bdb4b",
+  "record_hash_local": "b602431271d33a4afdc9b37aee63819ab039fd421295bfa3da125e08bc13d4cd",
+  "run_id": "20260905T140450Z-91d69d",
+  "tampered_field": "caption",
+  "verdict": "MISMATCH",
+  "verified_at": "2026-09-05T14:07:55Z"
+}

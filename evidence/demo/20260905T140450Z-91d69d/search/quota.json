@@ -1,0 +1,15 @@
+{
+  "after": {
+    "plan": "Free Plan",
+    "searches_left": 248,
+    "this_month": 2
+  },
+  "before": {
+    "plan": "Free Plan",
+    "searches_left": 250,
+    "this_month": 0
+  },
+  "errors": [
+    "serpapi.google_lens/exact_matches: Google Lens hasn't returned any results for this query."
+  ]
+}

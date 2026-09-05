@@ -420,10 +420,27 @@ def anchor(run_id: str = "", chain: str = "local", pin: bool = False,
 
     post = record["post"]
     if client.exists(deployment["contract"], rec_hash):
-        emit(StageEvent("log", "anchor", "identical record already anchored; skipping"))
+        # Anchoring is idempotent: an identical bundle keeps its first record
+        # rather than paying for a duplicate. Recover the original transaction
+        # from the event log so the explorer link still works.
+        emit(StageEvent("log", "anchor", "identical record already anchored; reusing it"))
         onchain = client.get(deployment["contract"], rec_hash)
-        result = {"chain": chain, "contract": deployment["contract"],
-                  "record_hash": rec_hash, "already_anchored": True, "onchain": onchain}
+        event = client.find_event(deployment["contract"], rec_hash,
+                                  from_block=deployment.get("deploy_block", 0))
+        tx_hash = (event or {}).get("tx_hash", "")
+        result = {
+            "chain": chain, "chain_id": client.chain.chain_id,
+            "contract": deployment["contract"], "record_hash": rec_hash,
+            "already_anchored": True, "onchain": onchain,
+            "tx_hash": tx_hash,
+            "block_number": (event or {}).get("block_number"),
+            "block_timestamp": onchain.get("anchoredAt"),
+            "submitter": onchain.get("submitter"),
+            "evidence_uri": onchain.get("evidenceUri"),
+            "event": event or {},
+            "explorer_tx": client.chain.tx_url(tx_hash) if tx_hash else "",
+            "explorer_address": client.chain.addr_url(deployment["contract"]),
+        }
     else:
         result = client.anchor(
             deployment["contract"],

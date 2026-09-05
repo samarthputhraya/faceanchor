@@ -1,0 +1,4 @@
+{
+  "note": "Sanitised copy of a real run. face_secret.json and embedding.npy are withheld on purpose: they are the biometric material behind the on-chain commitment and never leave the operator's machine.",
+  "verify": "python verify.py --record evidence/demo/20260905T140450Z-91d69d/record.json"
+}

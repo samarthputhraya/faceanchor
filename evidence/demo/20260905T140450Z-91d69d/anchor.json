@@ -1,0 +1,50 @@
+{
+  "already_anchored": true,
+  "block_number": 46424449,
+  "block_timestamp": 1788617186,
+  "chain": "base-sepolia",
+  "chain_id": 84532,
+  "contract": "0xAFeB0eDaC32b4fD7710418211619ddE36C735D43",
+  "deployment": {
+    "chain": "base-sepolia",
+    "chain_id": 84532,
+    "contract": "0xAFeB0eDaC32b4fD7710418211619ddE36C735D43",
+    "deploy_block": 46424396,
+    "deploy_tx": "0xaf625352e4895628aa46fe3b6c85ae92aef61a6ce196c668637bafbde0c2cff0",
+    "deployed_at": "2026-09-05T14:04:39Z",
+    "explorer_address": "https://sepolia.basescan.org/address/0xAFeB0eDaC32b4fD7710418211619ddE36C735D43",
+    "explorer_tx": "https://sepolia.basescan.org/tx/0xaf625352e4895628aa46fe3b6c85ae92aef61a6ce196c668637bafbde0c2cff0",
+    "solc_version": "0.8.26"
+  },
+  "event": {
+    "anchoredAt": 1788617186,
+    "block_number": 46424449,
+    "evidenceUri": "sha256:2f72332c7f45fd35d73ada584dee1bc96e58d66a6cdd9e6d00558b75e72bdb4b",
+    "faceCommitment": "c9b38d4fdfbe883eca71ec9ccdbd5caaf000ec027ddfdeb65ffc97f7383e9478",
+    "inputImageSha256": "4aab1dffefe1960940b5ea2d55fb79dcc04a3cfdb8dbe298b102dd679610ac67",
+    "inputPHash": 12150742476299157201,
+    "postImageSha256": "bff202835ac0583e180381e3437f8ffbfa5dc81f230758841390565af98b9725",
+    "postUrlHash": "28a1b4a2bf0641c64b49cf96fcae6b7315f864cd4cd15bddcb539a7c07492964",
+    "recordHash": "2f72332c7f45fd35d73ada584dee1bc96e58d66a6cdd9e6d00558b75e72bdb4b",
+    "similarityBps": 9667,
+    "submitter": "0xc2557fB29fa3D88e90B6E37B8c64123c9fB6b854",
+    "tx_hash": "0xb20ba2b7ffd38b35f366e04799788a088b3c4728f23472442e7212418fd05f3f"
+  },
+  "evidence_uri": "sha256:2f72332c7f45fd35d73ada584dee1bc96e58d66a6cdd9e6d00558b75e72bdb4b",
+  "explorer_address": "https://sepolia.basescan.org/address/0xAFeB0eDaC32b4fD7710418211619ddE36C735D43",
+  "explorer_tx": "https://sepolia.basescan.org/tx/0xb20ba2b7ffd38b35f366e04799788a088b3c4728f23472442e7212418fd05f3f",
+  "onchain": {
+    "anchoredAt": 1788617186,
+    "evidenceUri": "sha256:2f72332c7f45fd35d73ada584dee1bc96e58d66a6cdd9e6d00558b75e72bdb4b",
+    "faceCommitment": "c9b38d4fdfbe883eca71ec9ccdbd5caaf000ec027ddfdeb65ffc97f7383e9478",
+    "inputImageSha256": "4aab1dffefe1960940b5ea2d55fb79dcc04a3cfdb8dbe298b102dd679610ac67",
+    "inputPHash": 12150742476299157201,
+    "postImageSha256": "bff202835ac0583e180381e3437f8ffbfa5dc81f230758841390565af98b9725",
+    "postUrlHash": "28a1b4a2bf0641c64b49cf96fcae6b7315f864cd4cd15bddcb539a7c07492964",
+    "similarityBps": 9667,
+    "submitter": "0xc2557fB29fa3D88e90B6E37B8c64123c9fB6b854"
+  },
+  "record_hash": "2f72332c7f45fd35d73ada584dee1bc96e58d66a6cdd9e6d00558b75e72bdb4b",
+  "submitter": "0xc2557fB29fa3D88e90B6E37B8c64123c9fB6b854",
+  "tx_hash": "0xb20ba2b7ffd38b35f366e04799788a088b3c4728f23472442e7212418fd05f3f"
+}

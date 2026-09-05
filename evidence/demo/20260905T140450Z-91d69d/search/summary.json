@@ -1,0 +1,183 @@
+{
+  "best": {
+    "engines_agreeing": 1,
+    "faces_found": 1,
+    "note": "",
+    "platform": "reddit",
+    "providers": [
+      "serpapi.google_lens"
+    ],
+    "rank": 1,
+    "raw_url": "https://www.reddit.com/r/AskTheWorld/comments/1ooessm/how_successful_are_indian_immigrants_in_your/",
+    "similarity": 0.9553,
+    "source": "Reddit",
+    "thumbnail_file": "thumbs/thumb_01_reddit.jpg",
+    "thumbnail_sha256": "a8baf88d1f957bdd74f36ce8fb22ebad4be25563e009cbf7e53f8fc1de0b5387",
+    "thumbnail_url": "https://encrypted-tbn2.gstatic.com/images?q=tbn:ANd9GcSVw3TlDzmaqlw3ieNsStH7KhuCGzQuXKs45S1sW6GTWV8PZ-Q9",
+    "title": "How successful are Indian immigrants in your country? : r/AskTheWorld",
+    "url": "https://reddit.com/r/AskTheWorld/comments/1ooessm/how_successful_are_indian_immigrants_in_your",
+    "verdict": "MATCH"
+  },
+  "candidates": [
+    {
+      "engines_agreeing": 1,
+      "faces_found": 1,
+      "note": "",
+      "platform": "reddit",
+      "providers": [
+        "serpapi.google_lens"
+      ],
+      "rank": 1,
+      "raw_url": "https://www.reddit.com/r/AskTheWorld/comments/1ooessm/how_successful_are_indian_immigrants_in_your/",
+      "similarity": 0.9553,
+      "source": "Reddit",
+      "thumbnail_file": "thumbs/thumb_01_reddit.jpg",
+      "thumbnail_sha256": "a8baf88d1f957bdd74f36ce8fb22ebad4be25563e009cbf7e53f8fc1de0b5387",
+      "thumbnail_url": "https://encrypted-tbn2.gstatic.com/images?q=tbn:ANd9GcSVw3TlDzmaqlw3ieNsStH7KhuCGzQuXKs45S1sW6GTWV8PZ-Q9",
+      "title": "How successful are Indian immigrants in your country? : r/AskTheWorld",
+      "url": "https://reddit.com/r/AskTheWorld/comments/1ooessm/how_successful_are_indian_immigrants_in_your",
+      "verdict": "MATCH"
+    },
+    {
+      "engines_agreeing": 1,
+      "faces_found": 1,
+      "note": "",
+      "platform": "instagram",
+      "providers": [
+        "serpapi.google_lens"
+      ],
+      "rank": 2,
+      "raw_url": "https://www.instagram.com/p/Dbxwu8hDAWo/",
+      "similarity": 0.8196,
+      "source": "Instagram",
+      "thumbnail_file": "thumbs/thumb_02_instagram.jpg",
+      "thumbnail_sha256": "6e4015d55ddb941b826365ff045d431615543090e2c58815ed886021dbe74f22",
+      "thumbnail_url": "https://encrypted-tbn2.gstatic.com/images?q=tbn:ANd9GcRVtXTm58K1v0RPC-WnRJ1c0FJgCnGvK0REj_0z0nkpnF8zejMA",
+      "title": "The best leadership lessons don't always come from textbooks. Sometimes, they come from the people building the future. Swipe through some of Sundar Pichai's most insightful thoughts on leadership, innovation, AI and",
+      "url": "https://instagram.com/p/Dbxwu8hDAWo",
+      "verdict": "MATCH"
+    },
+    {
+      "engines_agreeing": 1,
+      "faces_found": 1,
+      "note": "",
+      "platform": "linkedin",
+      "providers": [
+        "serpapi.google_lens"
+      ],
+      "rank": 3,
+      "raw_url": "https://www.linkedin.com/posts/timesofindia_google-ceo-sundar-pichai-on-the-proposal-activity-7258715774922436608-XU8p",
+      "similarity": 0.79,
+      "source": "LinkedIn",
+      "thumbnail_file": "thumbs/thumb_03_linkedin.jpg",
+      "thumbnail_sha256": "32a734bf4c3231bf5bfacabacbe07b08e420a7f08fdb70e7f65de70bd7562d1e",
+      "thumbnail_url": "https://encrypted-tbn0.gstatic.com/images?q=tbn:ANd9GcQ1UqQHe1rsRYVKqV_vJn59BxMsaKW2GdTSGDAv7scTVVGrEWzP",
+      "title": "Google CEO Sundar Pichai on the proposal of breaking up the company: “First of all, we plan to…” - Times of India | The Times Of India",
+      "url": "https://linkedin.com/posts/timesofindia_google-ceo-sundar-pichai-on-the-proposal-activity-7258715774922436608-XU8p",
+      "verdict": "MATCH"
+    },
+    {
+      "engines_agreeing": 1,
+      "faces_found": 1,
+      "note": "",
+      "platform": "youtube",
+      "providers": [
+        "serpapi.google_lens"
+      ],
+      "rank": 4,
+      "raw_url": "https://www.youtube.com/watch?v=rp_N5u_6htQ",
+      "similarity": 0.7449,
+      "source": "YouTube",
+      "thumbnail_file": "thumbs/thumb_06_youtube.jpg",
+      "thumbnail_sha256": "2b275054d26cde411a9ed33b190246765fac0315b86b1f849e8be033dbce9dcd",
+      "thumbnail_url": "https://encrypted-tbn1.gstatic.com/images?q=tbn:ANd9GcRkgwvxA897-p6tAbUMrTQ9DOpudVeK-0Vj2cjErBBlxTo9deai",
+      "title": "Lawmakers grill Google CEO on concerns of bias, election interference and privacy - YouTube",
+      "url": "https://youtube.com/watch?v=rp_N5u_6htQ",
+      "verdict": "MATCH"
+    },
+    {
+      "engines_agreeing": 1,
+      "faces_found": 1,
+      "note": "",
+      "platform": "linkedin",
+      "providers": [
+        "serpapi.google_lens"
+      ],
+      "rank": 5,
+      "raw_url": "https://www.linkedin.com/posts/drnikchong_google-ceo-sundar-pichai-to-entry-level-graduates-activity-7491644356743856128-ccME",
+      "similarity": 0.6969,
+      "source": "LinkedIn",
+      "thumbnail_file": "thumbs/thumb_04_linkedin.jpg",
+      "thumbnail_sha256": "6b2895d25adb7111778a1be5d6767685a6396914adaf654b0638a898ab676350",
+      "thumbnail_url": "https://encrypted-tbn3.gstatic.com/images?q=tbn:ANd9GcQGP8N9dNmP-SCtlYyeeVID0WHVflwI34lw3Zcwi6RvXAufVjFG",
+      "title": "Google CEO Sundar Pichai to entry-level graduates: Some people are painting a very troubled scenario due to AI, and I don't agree with it because ... | Nik Chong",
+      "url": "https://linkedin.com/posts/drnikchong_google-ceo-sundar-pichai-to-entry-level-graduates-activity-7491644356743856128-ccME",
+      "verdict": "MATCH"
+    },
+    {
+      "engines_agreeing": 1,
+      "faces_found": 3,
+      "note": "",
+      "platform": "linkedin",
+      "providers": [
+        "serpapi.google_lens"
+      ],
+      "rank": 6,
+      "raw_url": "https://www.linkedin.com/posts/rajah-tharmalingam-976736165_google-ceo-sundar-pichai-to-take-over-as-activity-6608706477488132097-wdrK",
+      "similarity": 0.6918,
+      "source": "LinkedIn",
+      "thumbnail_file": "thumbs/thumb_05_linkedin.jpg",
+      "thumbnail_sha256": "0d27829d42c37a06ed364b947f8cde4533ffeeeb87dc390e40a9ba444a5c611b",
+      "thumbnail_url": "https://encrypted-tbn3.gstatic.com/images?q=tbn:ANd9GcTGDHX7SRtNPfN8ZLYRZ2z-IrBExBVXsbawkAiJiVTX-aRpnuao",
+      "title": "Google CEO Sundar Pichai to take over as Chief Executive of parent company… | RAJAH THARMALINGAM",
+      "url": "https://linkedin.com/posts/rajah-tharmalingam-976736165_google-ceo-sundar-pichai-to-take-over-as-activity-6608706477488132097-wdrK",
+      "verdict": "MATCH"
+    },
+    {
+      "engines_agreeing": 1,
+      "faces_found": 1,
+      "note": "",
+      "platform": "youtube",
+      "providers": [
+        "serpapi.google_lens"
+      ],
+      "rank": 7,
+      "raw_url": "https://www.youtube.com/watch?v=p9pJczio9YE",
+      "similarity": 0.6591,
+      "source": "YouTube",
+      "thumbnail_file": "thumbs/thumb_07_youtube.jpg",
+      "thumbnail_sha256": "aef3a383420bc13a3606d00e54a88b982ca37baf19a49ce28a50c3687affc3b1",
+      "thumbnail_url": "https://encrypted-tbn0.gstatic.com/images?q=tbn:ANd9GcQvR4h69J8EalTikTz7ytSkLUk7Q6KcMMSO4O0-531Z0iRf2HSe",
+      "title": "Google Search Is Not Coming Back to China - YouTube",
+      "url": "https://youtube.com/watch?v=p9pJczio9YE",
+      "verdict": "MATCH"
+    }
+  ],
+  "errors": [
+    "serpapi.google_lens/exact_matches: Google Lens hasn't returned any results for this query."
+  ],
+  "hop": 1,
+  "name_guess": "",
+  "providers": [
+    {
+      "cached": false,
+      "created_at": "2026-09-05 14:05:03 UTC",
+      "kind": "visual_matches",
+      "provider": "serpapi.google_lens",
+      "raw_sha256": "12df3638a5274ebb3f53509ff0b7cb1e1fc7d2399f48a61d23bd390946d09fa0",
+      "results": 59,
+      "search_id": "6a9c218f2088af67293fc518"
+    }
+  ],
+  "quota_after": {
+    "plan": "Free Plan",
+    "searches_left": 248,
+    "this_month": 2
+  },
+  "quota_before": {
+    "plan": "Free Plan",
+    "searches_left": 250,
+    "this_month": 0
+  },
+  "run_id": "20260905T140450Z-91d69d"
+}

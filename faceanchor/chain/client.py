@@ -168,8 +168,7 @@ class ChainClient:
         receipt = self._send(fn)
         tx_hash = Web3.to_hex(receipt["transactionHash"])
         logs = c.events.Anchored().process_receipt(receipt)
-        block = self.w3.eth.get_block(receipt["blockNumber"])
-        ts = int(block["timestamp"])
+        ts = self._block_timestamp(receipt["blockNumber"])
         return {
             "chain": self.chain.name,
             "chain_id": self.chain.chain_id,
@@ -177,8 +176,8 @@ class ChainClient:
             "contract": address,
             "tx_hash": tx_hash,
             "block_number": receipt["blockNumber"],
-            "block_timestamp": ts,
-            "block_time_utc": time.strftime("%Y-%m-%dT%H:%M:%SZ", time.gmtime(ts)),
+            "block_timestamp": ts or None,
+            "block_time_utc": time.strftime("%Y-%m-%dT%H:%M:%SZ", time.gmtime(ts)) if ts else None,
             "gas_used": receipt.get("gasUsed"),
             "submitter": self.sender,
             "explorer_tx": self.chain.tx_url(tx_hash),
@@ -186,6 +185,22 @@ class ChainClient:
             "event": _event_to_dict(logs[0]["args"]) if logs else {},
             "anchored_at_local": iso(),
         }
+
+    def _block_timestamp(self, block_number: int, attempts: int = 4) -> int:
+        """Read a block's timestamp, tolerating a lagging RPC node.
+
+        Public endpoints sit behind load balancers, so the node that returns a
+        receipt is not always the node that has the block yet. The transaction
+        is already mined at this point, so a missing timestamp is cosmetic and
+        must never fail the anchor.
+        """
+        for i in range(attempts):
+            try:
+                return int(self.w3.eth.get_block(block_number)["timestamp"])
+            except Exception:  # noqa: BLE001 - includes BlockNotFound
+                if i < attempts - 1:
+                    time.sleep(1.5 * (i + 1))
+        return 0
 
     def get(self, address: str, record_hash: str) -> dict:
         r = self.contract(address).functions.get(_b32(record_hash)).call()

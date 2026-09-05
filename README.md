@@ -119,7 +119,9 @@ No key is required for `--chain local`, the tests, or CI.
 | Network | Base Sepolia (OP-stack Ethereum L2 testnet) |
 | Chain id | 84532 |
 | Contract | `FaceAnchorRegistry`, Solidity 0.8.26, optimizer on, 200 runs |
-| Address | _filled in by `deploy`; see `deployments/base-sepolia.json`_ |
+| Address | [`0xAFeB0eDaC32b4fD7710418211619ddE36C735D43`](https://sepolia.basescan.org/address/0xAFeB0eDaC32b4fD7710418211619ddE36C735D43) |
+| Deploy transaction | [`0xaf625352e4895628…`](https://sepolia.basescan.org/tx/0xaf625352e4895628aa46fe3b6c85ae92aef61a6ce196c668637bafbde0c2cff0) |
+| Demo record | [`0xb20ba2b7ffd38b35…`](https://sepolia.basescan.org/tx/0xb20ba2b7ffd38b35f366e04799788a088b3c4728f23472442e7212418fd05f3f) |
 | Explorer | [sepolia.basescan.org](https://sepolia.basescan.org) |
 | Cost | about 299,000 gas per record, roughly 0.000003 ETH at Base Sepolia gas |
 | Fallbacks | Ethereum Sepolia (11155111), or `--chain local`, an in-process py-evm chain running the identical contract |
@@ -144,7 +146,7 @@ The verifier needs one dependency and no API keys.
 
 ```bash
 pip install web3==7.16.0
-python verify.py --record evidence/demo/<run_id>/record.json
+python verify.py --record evidence/demo/20260905T140450Z-91d69d/record.json
 ```
 
 It prints the recomputed hashes beside the on-chain values and exits 0 on
@@ -152,14 +154,35 @@ It prints the recomputed hashes beside the on-chain values and exits 0 on
 you can confirm it independently:
 
 ```bash
-sha256sum evidence/demo/<run_id>/record.json
+sha256sum evidence/demo/20260905T140450Z-91d69d/record.json
 ```
 
 Then break it, and watch it fail:
 
 ```bash
-python verify.py --record evidence/demo/<run_id>/record.json --tamper caption
+python verify.py --record evidence/demo/20260905T140450Z-91d69d/record.json --tamper caption
 ```
+
+## A real run
+
+One complete run is committed under `evidence/demo/20260905T140450Z-91d69d/`, minus the biometric
+secret. A photograph of Sundar Pichai from Wikimedia Commons went in; Google
+Lens returned 59 results, of which 7 were social posts; all 7 were face-verified
+and the best was anchored on Base Sepolia.
+
+| | |
+| --- | --- |
+| Google Lens search id | `6a9c218f2088af67293fc518` (visible in the SerpApi dashboard) |
+| Results returned | 59, of which 7 were social posts |
+| Best match | a Reddit post, cosine 0.9553 on the search thumbnail |
+| Rescored on the full image | 0.9667 |
+| Record hash | `2f72332c7f45fd35d73ada584dee1bc96e58d66a6cdd9e6d00558b75e72bdb4b` |
+| Transaction | [`0xb20ba2b7ffd38b35…`](https://sepolia.basescan.org/tx/0xb20ba2b7ffd38b35f366e04799788a088b3c4728f23472442e7212418fd05f3f) |
+| Biometric re-scan | 0.9950 against the stored vector |
+
+`exact_matches` returned nothing for this query. That is recorded in
+`search/quota.json` rather than hidden, because a partial engine response is
+part of what actually happened.
 
 ## The evidence bundle
 

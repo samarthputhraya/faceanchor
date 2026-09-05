@@ -1,0 +1,22 @@
+{
+  "author": "No-StrategyX",
+  "canonical_url": "https://reddit.com/r/AskTheWorld/comments/1ooessm/how_successful_are_indian_immigrants_in_your",
+  "caption": "How successful are Indian immigrants in your country?",
+  "caption_sha256": "6365326ddaffcede8e552ec2e56726f9d9f50ab84a7731c66ddfbb6108e0de09",
+  "engines_agreeing": 1,
+  "extraction_method": "http_og",
+  "image_file": "post_image.jpg",
+  "image_phash": "a8b01be7e007bed8",
+  "image_sha256": "bff202835ac0583e180381e3437f8ffbfa5dc81f230758841390565af98b9725",
+  "image_source": "post_og",
+  "image_url": "https://i.redd.it/jv2runmc7azf1.png",
+  "notes": [],
+  "platform": "reddit",
+  "posted_at": "2025-11-04T18:18:15Z",
+  "posted_at_source": "exact",
+  "search_similarity": 0.9553,
+  "similarity": 0.9667,
+  "similarity_source": "post_og",
+  "url": "https://reddit.com/r/AskTheWorld/comments/1ooessm/how_successful_are_indian_immigrants_in_your",
+  "url_sha256": "28a1b4a2bf0641c64b49cf96fcae6b7315f864cd4cd15bddcb539a7c07492964"
+}
