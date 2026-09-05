@@ -16,7 +16,6 @@ import requests
 
 from .. import config
 from ..canonical import sha256_bytes
-from ..face.engine import cosine, decode_image
 from .base import Hit, canonical_url, platform_of
 
 MATCH, WEAK, REJECT, NO_FACE, FETCH_FAIL = "MATCH", "WEAK", "REJECT", "NO_FACE", "FETCH_FAIL"
@@ -97,6 +96,11 @@ def verdict_for(similarity: float, engine) -> str:
 def score_candidates(candidates: list[Candidate], query_embedding: np.ndarray, engine,
                      run_dir: Path, emit=None, timeout: int = 25) -> list[Candidate]:
     """Download each candidate thumbnail, embed every face, keep the best cosine."""
+    # Imported here rather than at module scope: merging, ranking and name
+    # identification are pure logic, so they stay importable (and testable)
+    # without OpenCV or a face model installed.
+    from ..face.engine import cosine, decode_image
+
     thumbs = run_dir / "thumbs"
     thumbs.mkdir(parents=True, exist_ok=True)
     headers = {"User-Agent": config.BROWSER_UA}
