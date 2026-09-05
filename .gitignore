@@ -20,6 +20,8 @@ models/*.zip
 # biometric material — must never leave the machine
 evidence/**/face_secret.json
 evidence/**/embedding.npy
+evidence/**/post_embedding.npy
+evidence/**/zk_secret.json
 
 # runtime evidence (only evidence/demo/ is committed, force-added)
 evidence/runs/

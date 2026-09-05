@@ -277,7 +277,7 @@ which image the final number came from.
 pytest -q
 ```
 
-43 tests, no network, no API keys and no model download, so they also run in CI
+47 tests, no network, no API keys and no model download, so they also run in CI
 on Ubuntu and Windows. They cover canonical byte stability across key order,
 float drift and unicode; the record hash equalling `sha256sum record.json`; the
 commitment being reproducible, salted and binding; URL canonicalisation and
@@ -346,7 +346,7 @@ faceanchor/          pipeline package
 contracts/           FaceAnchorRegistry.sol and its committed build artifact
 deployments/         deployed address, deploy transaction and block per chain
 ui/                  React dashboard
-tests/               43 tests, no keys required
+tests/               47 tests, no keys required
 verify.py            standalone verifier: web3 and the standard library only
 demo/                public-figure portraits with their sources
 evidence/demo/       one sanitised real run, without the biometric secret
