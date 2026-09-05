@@ -295,7 +295,11 @@ def reddit_extras(url: str, post: Post) -> None:
     """
     r = fetch(url.rstrip("/") + "/.rss")
     if r is not None and r.status_code == 429:
-        time.sleep(int(r.headers.get("x-ratelimit-reset", 8)) + 1)
+        # Reddit's reset header is frequently hundreds of seconds. Waiting that
+        # long would freeze the pipeline, so retry briefly and otherwise fall
+        # through to the thumbnail tier.
+        wait = min(5, int(r.headers.get("x-ratelimit-reset", 5) or 5))
+        time.sleep(wait)
         r = fetch(url.rstrip("/") + "/.rss")
     if r is None or r.status_code != 200:
         post.notes.append(
@@ -325,6 +329,16 @@ def via_chrome(url: str, post: Post, screenshot: Path | None = None) -> bool:
     except ImportError:
         post.notes.append("playwright not installed; skipped browser tier")
         return False
+
+    # Playwright's teardown writes asyncio warnings straight to stderr when it
+    # runs off the main thread, which is what the dashboard does. That noise
+    # would appear beside a working run, so it is muted for the duration.
+    import logging
+
+    noisy = [logging.getLogger(n) for n in ("asyncio", "playwright")]
+    previous = [(lg, lg.level) for lg in noisy]
+    for lg in noisy:
+        lg.setLevel(logging.CRITICAL)
     try:
         with sync_playwright() as p:
             browser = p.chromium.launch(channel="chrome", headless=True)
@@ -344,6 +358,9 @@ def via_chrome(url: str, post: Post, screenshot: Path | None = None) -> bool:
     except Exception as exc:  # noqa: BLE001 - browser tier is best effort
         post.notes.append(f"chrome tier failed: {type(exc).__name__}")
         return False
+    finally:
+        for lg, level in previous:
+            lg.setLevel(level)
 
 
 # --- orchestration -----------------------------------------------------------------

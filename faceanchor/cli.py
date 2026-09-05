@@ -73,20 +73,30 @@ def make_emitter(json_mode: bool = False):
             d = ev.data
             style = VERDICT_STYLE.get(d["verdict"], "")
             sim = f"{d['similarity']:.4f}" if d["similarity"] >= 0 else "  --  "
-            console.print(
-                f"    [{style}]{d['verdict']:<10}[/] {sim}  "
-                f"[dim]{d['platform']:<10}[/dim] {d['url'][:72]}"
-            )
+            line = Text("  ")
+            line.append(f"{d.get('progress', ''):>7} ", style="dim")
+            line.append(f"{d['verdict']:<10}", style=style)
+            line.append(f" {sim}  ")
+            line.append(f"{d['platform']:<10} ", style="dim")
+            line.append(d["url"][:66])
+            console.print(line)
         elif ev.kind == "error":
-            console.print(f"  [bold red]{ev.message}[/bold red]")
+            console.print(Text("  " + ev.message, style="bold red"))
         elif ev.kind in ("record", "tx"):
-            console.print(f"  [bold]{ev.message}[/bold]")
+            console.print(Text("  " + ev.message, style="bold"))
         else:
-            console.print(f"  [dim]{ev.ts}[/dim]  {ev.message}")
+            line = Text("  ")
+            line.append(ev.ts, style="dim")
+            line.append("  " + ev.message)
+            console.print(line)
     return emit
 
 
-def candidate_table(path: Path) -> Table:
+MAX_TABLE_ROWS = 12
+
+
+def candidate_table(path: Path, limit: int = MAX_TABLE_ROWS) -> Table:
+    """Show the top rows only, so the final verdict stays on screen."""
     data = read_json(path)
     th = data["threshold"]
     t = Table(
@@ -101,7 +111,8 @@ def candidate_table(path: Path) -> Table:
     t.add_column("eng", justify="right")
     t.add_column("platform")
     t.add_column("post url", overflow="fold", max_width=62)
-    for c in data["candidates"]:
+    rows = data["candidates"]
+    for c in rows[:limit]:
         sim = f"{c['similarity']:.4f}" if c["similarity"] >= 0 else "--"
         t.add_row(
             str(c["rank"]),
@@ -109,6 +120,13 @@ def candidate_table(path: Path) -> Table:
             sim, str(c["faces_found"]), str(c["engines_agreeing"]),
             c["platform"], c["url"],
         )
+    if len(rows) > limit:
+        counts: dict[str, int] = {}
+        for c in rows[limit:]:
+            counts[c["verdict"]] = counts.get(c["verdict"], 0) + 1
+        summary = ", ".join(f"{n} {v.lower()}" for v, n in sorted(counts.items()))
+        t.caption = (f"{len(rows) - limit} more in candidates.json ({summary}); "
+                     f"{len(rows)} scored in total")
     return t
 
 
@@ -239,7 +257,7 @@ def control(run: str = typer.Option("", "--run"),
 
 @app.command()
 def anchor(run: str = typer.Option("", "--run"),
-           chain: str = typer.Option("local", "--chain",
+           chain: str = typer.Option(config.DEFAULT_CHAIN, "--chain",
                                      help="local | base-sepolia | sepolia"),
            pin: bool = typer.Option(False, "--pin", help="also pin the record to IPFS"),
            json_out: bool = typer.Option(False, "--json")):
@@ -308,7 +326,7 @@ def tamper_demo(run: str = typer.Option("", "--run"),
 
 @app.command()
 def run(image: str = typer.Option(..., "--image", "-i"),
-        chain: str = typer.Option("local", "--chain"),
+        chain: str = typer.Option(config.DEFAULT_CHAIN, "--chain"),
         engines: str = typer.Option("lens", "--engines"),
         engine: str = typer.Option("", "--engine"),
         image_url: str = typer.Option("", "--image-url"),
@@ -337,7 +355,8 @@ def run(image: str = typer.Option(..., "--image", "-i"),
 
 
 @app.command()
-def deploy(chain: str = typer.Option("base-sepolia", "--chain")):
+def deploy(chain: str = typer.Option(config.DEFAULT_CHAIN if config.DEFAULT_CHAIN != "local"
+                                      else "base-sepolia", "--chain")):
     """Deploy the registry contract and record the address."""
     from .chain.client import ChainClient
 
@@ -414,7 +433,8 @@ def status():
 
 
 @app.command()
-def doctor(chain: str = typer.Option("base-sepolia", "--chain"),
+def doctor(chain: str = typer.Option(config.DEFAULT_CHAIN if config.DEFAULT_CHAIN != "local"
+                                      else "base-sepolia", "--chain"),
            image: str = typer.Option("", "--image", "-i",
                                      help="also check whether this photo will search well")):
     """Check everything that could break a run, before it does."""
@@ -456,16 +476,41 @@ def serve(host: str = typer.Option("127.0.0.1", "--host"),
     """Serve the web dashboard and its event stream."""
     import uvicorn
 
+    console.print(f"dashboard on http://{host}:{port}")
     uvicorn.run("faceanchor.api:app", host=host, port=port,
-                log_level="warning", reload=reload)
+                log_level="info", reload=reload,
+                reload_dirs=[str(config.ROOT / "faceanchor")])
+
+
+def _fatal(message: str, code: int) -> None:
+    console.print(Panel(Text(message), title="stopped",
+                        border_style="bold red", style="bold red"))
+    sys.exit(code)
 
 
 def main() -> None:
+    """Entry point. A live run should never end in a raw traceback."""
+    import requests
+
+    from .errors import ChainError
+
     try:
         app()
     except KeyboardInterrupt:
         console.print("\ninterrupted")
         sys.exit(130)
+    except ChainError as exc:
+        _fatal(str(exc), config.EXIT_CHAIN)
+    except requests.RequestException as exc:
+        _fatal(f"a network request failed ({type(exc).__name__}). "
+               f"Check the connection and run it again.", config.EXIT_PROVIDER)
+    except FileNotFoundError as exc:
+        _fatal(f"missing file: {exc.filename}", config.EXIT_PROVIDER)
+    except PermissionError as exc:
+        _fatal(f"cannot open {exc.filename}; it may be open in another program",
+               config.EXIT_PROVIDER)
+    except Exception as exc:  # noqa: BLE001 - last line of defence on camera
+        _fatal(f"{type(exc).__name__}: {exc}", config.EXIT_PROVIDER)
 
 
 if __name__ == "__main__":

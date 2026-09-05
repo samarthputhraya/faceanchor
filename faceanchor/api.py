@@ -23,16 +23,25 @@ from .events import StageEvent
 
 app = FastAPI(title="FaceAnchor", version="0.1.0")
 
-# run_id -> {"queue": Queue, "events": [...], "done": bool}
+# run_id -> {"subscribers": [Queue, ...], "events": [...], "done": bool}
+# One queue per connected viewer: a single shared queue meant a reconnect split
+# the stream between two consumers and stranded the abandoned reader forever.
 RUNS: dict[str, dict] = {}
+
+
+def _new_state() -> dict:
+    return {"subscribers": [], "events": [], "done": False}
+
+
 UPLOADS = config.ROOT / ".cache" / "uploads"
 
 
 def _emitter(run_id: str):
     def emit(ev: StageEvent) -> None:
-        state = RUNS.setdefault(run_id, {"queue": queue.Queue(), "events": [], "done": False})
+        state = RUNS.setdefault(run_id, _new_state())
         state["events"].append(ev)
-        state["queue"].put(ev)
+        for q in list(state["subscribers"]):
+            q.put(ev)
     return emit
 
 
@@ -53,11 +62,13 @@ def _run_pipeline(run_id: str, image_path: Path, chain: str, engines: str,
         emit(StageEvent("error", "pipeline", f"{type(exc).__name__}: {exc}"))
     finally:
         state["done"] = True
-        state["queue"].put(None)
+        for q in list(state["subscribers"]):
+            q.put(None)
 
 
 @app.post("/api/runs")
-async def start_run(image: UploadFile = File(...), chain: str = Form("local"),
+async def start_run(image: UploadFile = File(...),
+                    chain: str = Form(config.DEFAULT_CHAIN),
                     engines: str = Form("lens"), image_url: str = Form(""),
                     use_browser: bool = Form(True)):
     run_id = new_run_id()
@@ -65,7 +76,7 @@ async def start_run(image: UploadFile = File(...), chain: str = Form("local"),
     dest = UPLOADS / f"{run_id}.jpg"
     dest.write_bytes(await image.read())
 
-    RUNS[run_id] = {"queue": queue.Queue(), "events": [], "done": False}
+    RUNS[run_id] = _new_state()
     threading.Thread(
         target=_run_pipeline,
         args=(run_id, dest, chain, engines, image_url, use_browser),
@@ -81,27 +92,42 @@ async def stream(run_id: str):
         raise HTTPException(404, "unknown run")
 
     async def gen():
-        # Replay what already happened so a late viewer sees the whole run.
-        for ev in list(state["events"]):
-            yield f"event: {ev.kind}\ndata: {ev.to_json()}\n\n"
-        if state["done"]:
-            yield "event: done\ndata: {}\n\n"
-            return
-        loop = asyncio.get_running_loop()
-        seen = len(state["events"])
-        while True:
-            ev = await loop.run_in_executor(None, state["queue"].get)
-            if ev is None:
+        # Subscribe first, then replay, so nothing emitted during the replay is
+        # lost. Each viewer gets its own queue, so a reconnect is harmless.
+        q: queue.Queue = queue.Queue()
+        state["subscribers"].append(q)
+        try:
+            replay = list(state["events"])
+            for ev in replay:
+                yield f"event: {ev.kind}\ndata: {ev.to_json()}\n\n"
+            if state["done"]:
                 yield "event: done\ndata: {}\n\n"
                 return
-            # The replay above may already have covered this event.
-            if state["events"].index(ev) < seen:
-                continue
-            yield f"event: {ev.kind}\ndata: {ev.to_json()}\n\n"
+            replayed = set(map(id, replay))
+            loop = asyncio.get_running_loop()
+            while True:
+                try:
+                    ev = await asyncio.wait_for(
+                        loop.run_in_executor(None, q.get), timeout=20)
+                except asyncio.TimeoutError:
+                    # Scoring can run for minutes; a comment frame stops the
+                    # browser and any proxy from giving up on a quiet stream.
+                    yield ": keep-alive\n\n"
+                    continue
+                if ev is None:
+                    yield "event: done\ndata: {}\n\n"
+                    return
+                if id(ev) in replayed:
+                    continue
+                yield f"event: {ev.kind}\ndata: {ev.to_json()}\n\n"
+        finally:
+            if q in state["subscribers"]:
+                state["subscribers"].remove(q)
 
     return StreamingResponse(gen(), media_type="text/event-stream",
                              headers={"Cache-Control": "no-cache",
-                                      "X-Accel-Buffering": "no"})
+                                      "X-Accel-Buffering": "no",
+                                      "Connection": "keep-alive"})
 
 
 @app.get("/api/runs/{run_id}")

@@ -45,7 +45,7 @@ export default function App() {
   const [status, setStatus] = useState(null)
   const [file, setFile] = useState(null)
   const [preview, setPreview] = useState('')
-  const [chain, setChain] = useState('local')
+  const [chain, setChain] = useState('base-sepolia')
   const [engines, setEngines] = useState('lens')
   const [runId, setRunId] = useState('')
   const [events, setEvents] = useState([])
@@ -152,7 +152,28 @@ export default function App() {
       const s = await fetch(`/api/runs/${run_id}`).then((r) => r.json())
       setState(s)
     })
-    es.onerror = () => { es.close(); setRunning(false) }
+    // A dropped stream must not look like a finished run: say so, then rejoin.
+    // The server replays everything, so nothing is missed on reconnect.
+    es.onerror = () => {
+      if (es.readyState === EventSource.CLOSED) {
+        setEvents((prev) => [...prev, {
+          kind: 'log', stage: 'stream', ts: new Date().toISOString(),
+          message: 'event stream dropped, reconnecting...',
+        }])
+        setTimeout(() => {
+          const again = new EventSource(`/api/runs/${run_id}/events`)
+          for (const kind of ['stage_start', 'stage_end', 'log', 'candidate',
+            'record', 'tx', 'verified', 'error']) {
+            again.addEventListener(kind, push(kind))
+          }
+          again.addEventListener('done', async () => {
+            again.close()
+            setRunning(false)
+            setState(await fetch(`/api/runs/${run_id}`).then((r) => r.json()))
+          })
+        }, 1200)
+      }
+    }
   }, [file, chain, engines, running])
 
   const tamper = async (field) => {
@@ -244,9 +265,9 @@ export default function App() {
                   chain
                   <select value={chain} onChange={(e) => setChain(e.target.value)}
                     className="mt-1 w-full rounded-md border border-edge bg-ink px-2 py-1.5 text-sm text-white">
-                    <option value="local">local EVM</option>
                     <option value="base-sepolia">Base Sepolia</option>
                     <option value="sepolia">Ethereum Sepolia</option>
+                    <option value="local">local EVM (no explorer link)</option>
                   </select>
                 </label>
                 <label className="text-mute">

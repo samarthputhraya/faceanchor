@@ -27,6 +27,9 @@ SFACE_MATCH_THRESHOLD = 0.363
 SFACE_WEAK_THRESHOLD = 0.28
 
 FACE_ENGINE = os.getenv("FACE_ENGINE", "insightface")
+# Default chain for every command, so a run cannot silently land on the
+# in-memory chain and produce no explorer link.
+DEFAULT_CHAIN = os.getenv("CHAIN", "local").strip() or "local"
 
 SERPAPI_KEY = os.getenv("SERPAPI_KEY", "").strip()
 SEARCHAPI_KEY = os.getenv("SEARCHAPI_KEY", "").strip()
@@ -110,7 +113,13 @@ def latest_run() -> str | None:
     return runs[0] if runs else None
 
 
-def resolve_run(run_id: str | None) -> Path:
+def resolve_run(run_id: str | None, needs: str = "") -> Path:
+    """Locate a run directory, and say plainly when a stage is out of order.
+
+    latest_run() can point at a run that was interrupted, so a bare `extract`
+    or `verify` used to die with a raw FileNotFoundError. Naming the missing
+    artifact and the command that produces it is far more useful.
+    """
     rid = run_id or latest_run()
     if not rid:
         raise SystemExit("no runs found. start with: python -m faceanchor scan --image <file>")
@@ -119,6 +128,18 @@ def resolve_run(run_id: str | None) -> Path:
         d = DEMO_EVIDENCE_ROOT / rid
     if not d.exists():
         raise SystemExit(f"run '{rid}' not found under evidence/")
+    if needs and not (d / needs).exists():
+        produced_by = {
+            "face.json": "scan --image <file>",
+            "candidates.json": "search",
+            "post.json": "extract",
+            "record.json": "anchor --chain <chain>",
+            "anchor.json": "anchor --chain <chain>",
+        }.get(needs, "an earlier stage")
+        raise SystemExit(
+            f"run {rid} has no {needs}, so it has not reached this stage yet. "
+            f"Run this first:  python -m faceanchor {produced_by} --run {rid}"
+        )
     return d
 
 

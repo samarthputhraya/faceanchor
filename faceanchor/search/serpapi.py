@@ -17,7 +17,7 @@ from .base import Hit, RawSearch, load_cache, redact, save_cache
 ENDPOINT = "https://serpapi.com/search"
 UPLOAD = "https://serpapi.com/image"
 ACCOUNT = "https://serpapi.com/account"
-TIMEOUT = 90
+TIMEOUT = 45
 
 
 def available() -> bool:
@@ -120,6 +120,13 @@ def google_images(query: str, cache_key: str = "", use_cache: bool = True) -> Ra
                 "serpapi.google_images", "images", cache_key, use_cache)
 
 
+def _url(value) -> str:
+    """Some engines return {"link": ...} where others return a bare string."""
+    if isinstance(value, dict):
+        return value.get("link") or value.get("url") or ""
+    return value or ""
+
+
 def hits_from(rs: RawSearch) -> list[Hit]:
     """Flatten any SerpApi engine response into ranked Hits."""
     raw, out = rs.raw, []
@@ -141,8 +148,9 @@ def hits_from(rs: RawSearch) -> list[Hit]:
                     title=item.get("title") or item.get("snippet") or "",
                     link=link,
                     source=item.get("source") or item.get("domain") or "",
-                    thumbnail=item.get("thumbnail") or item.get("thumbnail_url") or "",
-                    image=item.get("original") or item.get("image") or item.get("original_image") or "",
+                    thumbnail=_url(item.get("thumbnail") or item.get("thumbnail_url")),
+                    image=_url(item.get("original") or item.get("image")
+                               or item.get("original_image")),
                 )
             )
     return out

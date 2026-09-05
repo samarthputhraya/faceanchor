@@ -38,13 +38,14 @@ def _noop(_: StageEvent) -> None:
 def scan(image_path: str | Path, engine_name: str = "", run_id: str = "",
          emit: Emit = _noop) -> dict:
     engine_name = engine_name or config.FACE_ENGINE
+    src = Path(image_path)
+    if not src.exists():
+        # Checked before a run directory is created, so a typo leaves no litter.
+        raise SystemExit(f"input image not found: {src}")
     run_id = run_id or new_run_id()
     d = config.run_dir(run_id)
     emit(StageEvent("stage_start", "scan", f"run {run_id}", {"run_id": run_id}))
 
-    src = Path(image_path)
-    if not src.exists():
-        raise SystemExit(f"input image not found: {src}")
     dest = d / "input.jpg"
     img = load_image(src)
     save_jpeg(img, dest, quality=95)
@@ -117,7 +118,7 @@ def scan(image_path: str | Path, engine_name: str = "", run_id: str = "",
 def search(run_id: str = "", engines: str = "lens", image_url: str = "",
            use_cache: bool = True, max_candidates: int = cand_mod.DEFAULT_MAX_SCORED,
            emit: Emit = _noop) -> dict:
-    d = config.resolve_run(run_id)
+    d = config.resolve_run(run_id, needs="face.json")
     face_json = read_json(d / "face.json")
     engine = get_engine(face_json.get("engine", "").split("/")[0] or config.FACE_ENGINE)
     engine.load()
@@ -182,6 +183,10 @@ def search(run_id: str = "", engines: str = "lens", image_url: str = "",
         except Exception as exc:  # noqa: BLE001
             errors.append(f"whole-image retry: {exc}")
 
+    if "lens" in wanted and not raws and fallbacks.searchapi_available() and not image_url:
+        emit(StageEvent("log", "search",
+                        "searchapi fallback needs a publicly reachable query image; "
+                        "pass --image-url to enable it"))
     if "lens" in wanted and not raws and fallbacks.searchapi_available() and image_url:
         try:
             rs = fallbacks.searchapi_lens(image_url, cache_key=cache_key, use_cache=use_cache)
@@ -235,15 +240,25 @@ def search(run_id: str = "", engines: str = "lens", image_url: str = "",
                             f"no match yet; hop 2 by identified name: {name_guess}"))
             hop2_hits = []
             for q in cand_mod.hop2_queries(name_guess):
+                left = (quota_before or {}).get("searches_left")
+                use_serpapi = serpapi.available() and (left is None or int(left) > 2)
                 try:
-                    if serpapi.available():
+                    if use_serpapi:
                         rs = serpapi.google_images(q, cache_key=sha256_text(q), use_cache=use_cache)
-                        hits = serpapi.hits_from(rs)
+                        hits = [] if rs.error else serpapi.hits_from(rs)
                     elif fallbacks.serper_available():
                         rs = fallbacks.serper_images(q, cache_key=sha256_text(q), use_cache=use_cache)
                         hits = fallbacks.serper_hits(rs)
                     else:
+                        emit(StageEvent("log", "search",
+                                        "hop 2 skipped: no search provider with quota left"))
                         break
+                    if getattr(rs, "error", ""):
+                        # An errored response is not evidence of anything, so it
+                        # is reported but never written into the record.
+                        errors.append(f"hop2 {q}: {rs.error}")
+                        emit(StageEvent("log", "search", f"hop2 {q}: {rs.error}"))
+                        continue
                     raws.append(rs)
                     hop2_hits.append(hits)
                     emit(StageEvent("log", "search", f"hop2 {q}: {len(hits)} hits"))
@@ -318,7 +333,7 @@ def control(run_id: str = "", other_image: str = "", emit: Emit = _noop) -> dict
 
     Uses the thumbnails already on disk, so it costs no search quota.
     """
-    d = config.resolve_run(run_id)
+    d = config.resolve_run(run_id, needs="candidates.json")
     cands = read_json(d / "candidates.json")
     engine = get_engine(read_json(d / "face.json")["engine"].split("/")[0])
     engine.load()
@@ -329,6 +344,8 @@ def control(run_id: str = "", other_image: str = "", emit: Emit = _noop) -> dict
     faces = engine.detect_and_embed(load_image(other_image))
     face = largest(faces)
     if face is None:
+        emit(StageEvent("error", "control",
+                        "no face found in the control image"))
         raise SystemExit(config.EXIT_NO_FACE)
 
     rows, flipped = [], 0
@@ -372,10 +389,13 @@ def control(run_id: str = "", other_image: str = "", emit: Emit = _noop) -> dict
 # --- stage 3: extract --------------------------------------------------------------
 
 def extract(run_id: str = "", use_browser: bool = True, emit: Emit = _noop) -> dict:
-    d = config.resolve_run(run_id)
+    d = config.resolve_run(run_id, needs="candidates.json")
     cands = read_json(d / "candidates.json")["candidates"]
     best = next((c for c in cands if c["verdict"] == "MATCH"), None)
     if best is None:
+        emit(StageEvent("error", "extract",
+                        "no candidate reached the match threshold, so there is "
+                        "nothing to extract. candidates.json lists what was checked."))
         raise SystemExit(config.EXIT_NO_MATCH)
 
     emit(StageEvent("stage_start", "extract", best["url"]))
@@ -488,7 +508,7 @@ def anchor(run_id: str = "", chain: str = "local", pin: bool = False,
            emit: Emit = _noop) -> dict:
     from .chain.client import ChainClient
 
-    d = config.resolve_run(run_id)
+    d = config.resolve_run(run_id, needs="post.json")
     record = build_record(d)
     record["chain_intent"] = {"chain": chain, "chain_id": config.get_chain(chain).chain_id}
 
@@ -571,7 +591,7 @@ def verify(run_id: str = "", chain: str = "", tamper_field: str = "",
            biometric: bool = False, emit: Emit = _noop) -> dict:
     from .chain.client import ChainClient
 
-    d = config.resolve_run(run_id)
+    d = config.resolve_run(run_id, needs="anchor.json")
     anchor_info = read_json(d / "anchor.json")
     chain = chain or anchor_info.get("chain") or anchor_info["deployment"]["chain"]
     contract = anchor_info["deployment"]["contract"]
@@ -648,8 +668,10 @@ def verify(run_id: str = "", chain: str = "", tamper_field: str = "",
         post_image_sha256=record["post"]["image_sha256"] or ("0" * 64),
     )
     stored = client.get(contract, local_hash) if onchain["found"] else {}
-    event = client.find_event(contract, local_hash,
-                              from_block=anchor_info["deployment"].get("deploy_block", 0))
+    # Start from the block the record was actually anchored in when we know it;
+    # the deploy block can be tens of thousands of blocks back.
+    anchored_block = anchor_info.get("block_number") or         anchor_info["deployment"].get("deploy_block", 0)
+    event = client.find_event(contract, local_hash, from_block=max(0, anchored_block - 1))
 
     ok = all(c["ok"] for c in checks) and onchain["ok"]
     report = {

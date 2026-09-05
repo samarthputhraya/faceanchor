@@ -38,6 +38,7 @@ class Candidate:
     similarity: float = -1.0
     verdict: str = FETCH_FAIL
     note: str = ""
+    progress: str = ""
 
     @property
     def engines_agreeing(self) -> int:
@@ -119,7 +120,10 @@ def score_candidates(candidates: list[Candidate], query_embedding: np.ndarray, e
     skipped = candidates[limit:] if limit else []
     for c in skipped:
         c.verdict, c.note = SKIPPED, f"beyond the --max-candidates limit of {limit}"
-    for i, c in enumerate(candidates[:limit] if limit else candidates, 1):
+    scored = candidates[:limit] if limit else candidates
+    total = len(scored)
+    for i, c in enumerate(scored, 1):
+        c.progress = f"{i}/{total}"
         if not c.thumbnail_url:
             c.verdict, c.note = FETCH_FAIL, "no thumbnail url in search response"
         else:

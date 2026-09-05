@@ -17,9 +17,11 @@ from web3 import Web3
 
 from .. import config
 from ..canonical import iso
+from ..errors import ChainError
 from .contract import load_artifact
 
-RECEIPT_TIMEOUT = 240
+RECEIPT_TIMEOUT = 90
+MAX_LOG_SPAN = 9000  # public RPCs reject eth_getLogs over ~10k blocks
 
 # The in-process EVM lives in memory, so every ChainClient("local") must share
 # one instance. Without this, anchor() deploys onto a chain that verify() never
@@ -35,10 +37,6 @@ def _local_web3():
 
         _LOCAL_W3 = Web3(EthereumTesterProvider())
     return _LOCAL_W3
-
-
-class ChainError(RuntimeError):
-    pass
 
 
 class ChainClient:
@@ -99,7 +97,9 @@ class ChainClient:
         else:
             tx: dict[str, Any] = {
                 "from": self.sender,
-                "nonce": self.w3.eth.get_transaction_count(self.sender),
+                # "pending" so a second run started before the first is mined
+                # gets the next nonce instead of colliding with it.
+                "nonce": self.w3.eth.get_transaction_count(self.sender, "pending"),
                 "chainId": self.chain.chain_id,
             }
             try:
@@ -113,14 +113,27 @@ class ChainClient:
             except Exception:  # noqa: BLE001
                 pass
             tx["maxPriorityFeePerGas"] = int(tip)
-            tx["maxFeePerGas"] = int(base * 2 + tip)
+            # Four times the current base fee leaves room for a spike between
+            # building the transaction and it being included.
+            tx["maxFeePerGas"] = int(base * 4 + tip)
             built = fn.build_transaction(tx)
             signed = self.w3.eth.account.sign_transaction(built, self._key)
-            tx_hash = self.w3.eth.send_raw_transaction(signed.raw_transaction)
+            try:
+                tx_hash = self.w3.eth.send_raw_transaction(signed.raw_transaction)
+            except Exception as exc:  # noqa: BLE001
+                raise ChainError(_explain(exc, self.sender, self.chain.name)) from exc
 
-        receipt = self.w3.eth.wait_for_transaction_receipt(tx_hash, timeout=RECEIPT_TIMEOUT)
+        try:
+            receipt = self.w3.eth.wait_for_transaction_receipt(
+                tx_hash, timeout=RECEIPT_TIMEOUT)
+        except Exception as exc:  # noqa: BLE001 - includes TimeExhausted
+            raise ChainError(
+                f"the transaction was sent but has not been mined within "
+                f"{RECEIPT_TIMEOUT}s: {Web3.to_hex(tx_hash)}. "
+                f"{self.chain.tx_url(Web3.to_hex(tx_hash))}"
+            ) from exc
         if receipt.get("status") != 1:
-            raise ChainError(f"transaction reverted: {Web3.to_hex(tx_hash)}")
+            raise ChainError(f"the transaction reverted on chain: {Web3.to_hex(tx_hash)}")
         return dict(receipt)
 
     # --- deploy -----------------------------------------------------------------
@@ -246,23 +259,60 @@ class ChainClient:
         return {"ok": ok, "found": found, "image_ok": image_ok, "face_ok": face_ok,
                 "post_ok": post_ok, "post_image_ok": post_image_ok}
 
-    def find_event(self, address: str, record_hash: str, from_block: int = 0) -> dict | None:
-        """Independent confirmation: read the emitted log, not just storage."""
+    def find_event(self, address: str, record_hash: str, from_block: int = 0,
+                   to_block: int | None = None) -> dict | None:
+        """Independent confirmation: read the emitted log, not just storage.
+
+        Public RPCs reject an eth_getLogs range wider than about 10,000 blocks,
+        and Base Sepolia produces roughly 1,800 blocks an hour, so searching
+        from the deploy block starts failing a few hours after deployment. The
+        range is walked backwards in windows, newest first, so the usual case
+        (a record anchored recently, or a known block) costs one call.
+        """
         c = self.contract(address)
-        try:
-            logs = c.events.Anchored().get_logs(
-                from_block=from_block,
-                argument_filters={"recordHash": _b32(record_hash)},
-            )
-        except Exception:  # noqa: BLE001 - some public RPCs limit log ranges
-            return None
-        if not logs:
-            return None
-        log = logs[-1]
-        out = _event_to_dict(log["args"])
-        out["tx_hash"] = Web3.to_hex(log["transactionHash"])
-        out["block_number"] = log["blockNumber"]
-        return out
+        topic = _b32(record_hash)
+        head = self.w3.eth.block_number if to_block is None else to_block
+        low = max(0, from_block)
+
+        end = head
+        while end >= low:
+            start = max(low, end - MAX_LOG_SPAN + 1)
+            try:
+                logs = c.events.Anchored().get_logs(
+                    from_block=start, to_block=end,
+                    argument_filters={"recordHash": topic},
+                )
+            except Exception:  # noqa: BLE001 - keep walking on a flaky window
+                logs = []
+            if logs:
+                log = logs[-1]
+                out = _event_to_dict(log["args"])
+                out["tx_hash"] = Web3.to_hex(log["transactionHash"])
+                out["block_number"] = log["blockNumber"]
+                return out
+            if start == low:
+                return None
+            end = start - 1
+        return None
+
+
+def _explain(exc: Exception, sender: str, chain: str) -> str:
+    """Turn a web3 error into something a person can act on."""
+    text = str(exc).lower()
+    if "insufficient funds" in text:
+        return (f"{sender} does not have enough test ETH on {chain}. "
+                f"Claim more at https://portal.cdp.coinbase.com/products/faucet")
+    if "nonce too low" in text or "already known" in text:
+        return ("a transaction from this wallet is still pending; wait for it to "
+                "be mined and run the command again")
+    if "replacement transaction underpriced" in text or "underpriced" in text:
+        return ("the network raised its fee while this transaction was being "
+                "built; run the command again")
+    if "exceeds block gas limit" in text or "gas required exceeds" in text:
+        return "the transaction needs more gas than a block allows"
+    if "revert" in text:
+        return f"the contract rejected the call: {exc}"
+    return f"{type(exc).__name__}: {exc}"
 
 
 def _b32(hexstr: str) -> bytes:

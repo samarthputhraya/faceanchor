@@ -35,9 +35,11 @@ def test_rich_renders_non_ascii_onto_a_cp1252_stream():
 
 def test_the_cli_survives_a_non_utf8_console():
     """Run the CLI in a subprocess whose stdout encoding is the ANSI code page."""
+    import os
+
+    env = dict(os.environ, PYTHONIOENCODING="cp1252")
     proc = subprocess.run(
         [sys.executable, "-m", "faceanchor", "--help"],
-        cwd=ROOT, capture_output=True,
-        env={"PYTHONIOENCODING": "cp1252", "PATH": "", "SYSTEMROOT": ""},
+        cwd=ROOT, capture_output=True, env=env,
     )
     assert proc.returncode == 0, proc.stderr.decode("utf-8", "replace")
