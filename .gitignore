@@ -24,6 +24,9 @@ evidence/**/embedding.npy
 # runtime evidence (only evidence/demo/ is committed, force-added)
 evidence/runs/
 
+# cached provider responses and dashboard uploads
+.cache/
+
 # node / ui
 ui/node_modules/
 ui/dist/
