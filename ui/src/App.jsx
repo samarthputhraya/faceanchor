@@ -10,7 +10,7 @@ import SpotlightCard from './components/bits/SpotlightCard.jsx'
 import CountUp from './components/bits/CountUp.jsx'
 import DecryptedText from './components/bits/DecryptedText.jsx'
 
-const STEPS = ['scan', 'search', 'extract', 'anchor', 'verify']
+const STEPS = ['scan', 'search', 'extract', 'prove', 'anchor', 'verify']
 const VERDICT = {
   MATCH: { color: 'text-good', ring: 'border-good/50', label: 'match' },
   WEAK: { color: 'text-warn', ring: 'border-warn/40', label: 'weak' },
@@ -187,6 +187,7 @@ export default function App() {
   const anchor = state.anchor
   const post = state.post
   const face = state.face
+  const zk = state.zk
 
   return (
     <div className="mx-auto max-w-[1240px] px-6 py-8">
@@ -407,8 +408,33 @@ export default function App() {
             </Section>
           )}
 
+          {zk && (
+            <Section title="4  proved without revealing the face">
+              <SpotlightCard className="p-4" glow="167, 139, 250">
+                <Row label="scheme" value={`${zk.scheme}  (${zk.dimensions}-d)`} mono={false} />
+                <Row label="commit A" value={<DecryptedText text={String(zk.commitment_a).slice(0, 44)} />} />
+                <Row label="commit B" value={<DecryptedText text={String(zk.commitment_b).slice(0, 44)} />} />
+                <Row label="dot product" value={zk.dot} />
+                <Row label="norms" value={`|A|^2 ${zk.norm_a}   |B|^2 ${zk.norm_b}`} mono={false} />
+                <Row
+                  label="similarity"
+                  value={<span className="text-good"><CountUp to={zk.similarity} decimals={4} /> proven</span>}
+                  mono={false}
+                />
+                <p className="mt-3 text-[11px] leading-relaxed text-mute">
+                  <span className="text-good">Proves</span> the dot product and norms above belong to the
+                  two committed embeddings, so the similarity written on-chain cannot be inflated.
+                </p>
+                <p className="mt-1 text-[11px] leading-relaxed text-mute">
+                  <span className="text-warn">Does not prove</span> those embeddings came from running the
+                  face model on the two images &mdash; that would need the model itself inside the circuit.
+                </p>
+              </SpotlightCard>
+            </Section>
+          )}
+
           {anchor && (
-            <Section title="4  anchored on-chain">
+            <Section title="5  anchored on-chain">
               <SpotlightCard className="p-4" glow="56, 217, 150">
                 <Row label="chain" value={`${anchor.chain}  (id ${anchor.chain_id})`} mono={false} />
                 <Row label="contract" value={anchor.contract} />
@@ -427,7 +453,7 @@ export default function App() {
           )}
 
           {verifyReport && (
-            <Section title="5  re-verification">
+            <Section title="6  re-verification">
               <SpotlightCard className="p-4"
                 glow={verifyReport.verdict === 'VERIFIED' ? '56, 217, 150' : '255, 107, 107'}>
                 <div className="mb-3 flex items-center gap-2">
