@@ -414,12 +414,50 @@ def status():
 
 
 @app.command()
+def doctor(chain: str = typer.Option("base-sepolia", "--chain"),
+           image: str = typer.Option("", "--image", "-i",
+                                     help="also check whether this photo will search well")):
+    """Check everything that could break a run, before it does."""
+    from .doctor import FAIL, OK, WARN, run_all
+
+    checks = run_all(chain, image)
+    marks = {OK: Text("ok", style="green"), WARN: Text("warn", style="yellow"),
+             FAIL: Text("FAIL", style="bold red")}
+    t = Table(title="faceanchor preflight", title_style="bold", header_style="bold")
+    t.add_column("", justify="center")
+    t.add_column("check")
+    t.add_column("detail", overflow="fold", max_width=46)
+    t.add_column("what to do", overflow="fold", max_width=44, style="dim")
+    for c in checks:
+        t.add_row(marks[c.state], c.name, c.detail, c.fix)
+    console.print(t)
+
+    failures = [c for c in checks if c.state == FAIL]
+    warnings = [c for c in checks if c.state == WARN]
+    if failures:
+        console.print(Panel(
+            Text(f"{len(failures)} blocking problem"
+                 f"{'' if len(failures) == 1 else 's'}: "
+                 + ", ".join(c.name for c in failures), justify="center"),
+            border_style="bold red", style="bold red"))
+        raise typer.Exit(config.EXIT_PROVIDER)
+    console.print(Panel(
+        Text("ready to run" + (f", with {len(warnings)} warning"
+             f"{'' if len(warnings) == 1 else 's'} noted above" if warnings else ""),
+             justify="center"),
+        border_style="bold green", style="bold green"))
+
+
+@app.command()
 def serve(host: str = typer.Option("127.0.0.1", "--host"),
-          port: int = typer.Option(8000, "--port")):
+          port: int = typer.Option(8000, "--port"),
+          reload: bool = typer.Option(True, "--reload/--no-reload",
+                                      help="pick up code changes without a restart")):
     """Serve the web dashboard and its event stream."""
     import uvicorn
 
-    uvicorn.run("faceanchor.api:app", host=host, port=port, log_level="info")
+    uvicorn.run("faceanchor.api:app", host=host, port=port,
+                log_level="warning", reload=reload)
 
 
 def main() -> None:
