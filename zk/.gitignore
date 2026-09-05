@@ -1,0 +1,21 @@
+# Toolchain binary: downloaded by build.ps1, 12 MB, not ours to vendor.
+bin/
+
+node_modules/
+
+# Ceremony and proving artifacts. Large, and reproducible from build.ps1.
+# verification_key.json and Groth16Verifier.sol ARE committed, so a third party
+# can verify a proof without rebuilding anything.
+build/*.ptau
+build/*.zkey
+build/*.wtns
+build/*.r1cs
+build/*.sym
+build/*.log
+build/facematch_js/
+
+# Per-run proving inputs and outputs live in evidence/runs/<id>/, not here.
+build/input.json
+build/proof.json
+build/public.json
+build/witness.json
