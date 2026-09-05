@@ -97,6 +97,35 @@ def commitment(quantised: list[int], salt_hex: str) -> str:
     return json.loads(p.stdout)["commitment"]
 
 
+def solidity_calldata(run_dir: Path) -> dict:
+    """Proof in the shape the generated Solidity verifier expects.
+
+    snarkjs does this conversion rather than us: the G2 point in pi_b has its
+    coordinate pairs swapped relative to the JSON, and getting that wrong
+    produces a proof that verifies off-chain and fails on-chain.
+    """
+    d = Path(run_dir).resolve()
+    proof_path, public_path = d / "zk_proof.json", d / "zk_public.json"
+    for p in (proof_path, public_path):
+        if not p.exists():
+            raise ZkError(f"{p.name} is missing; run `prove` first")
+
+    p = _run([NODE, str(SNARKJS), "zkey", "export", "soliditycalldata",
+              str(public_path), str(proof_path)], "calldata export")
+    if p.returncode != 0:
+        raise ZkError(f"calldata export failed: {(p.stderr or p.stdout).strip()[:400]}")
+
+    # Output is four bracketed groups; wrapping them makes it valid JSON.
+    groups = json.loads("[" + p.stdout.strip() + "]")
+    a, b, c, signals = groups
+    return {
+        "a": [int(x, 16) for x in a],
+        "b": [[int(x, 16) for x in row] for row in b],
+        "c": [int(x, 16) for x in c],
+        "public_signals": [int(x, 16) for x in signals],
+    }
+
+
 def _offset_bytes(quantised: list[int]) -> list[int]:
     out = []
     for v in quantised:
