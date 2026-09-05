@@ -1,0 +1,360 @@
+{
+  "contractName": "FaceAnchorRegistry",
+  "solcVersion": "0.8.26",
+  "optimizer": {
+    "enabled": true,
+    "runs": 200
+  },
+  "viaIR": false,
+  "abi": [
+    {
+      "inputs": [
+        {
+          "internalType": "bytes32",
+          "name": "recordHash",
+          "type": "bytes32"
+        },
+        {
+          "internalType": "uint64",
+          "name": "anchoredAt",
+          "type": "uint64"
+        }
+      ],
+      "name": "RecordExists",
+      "type": "error"
+    },
+    {
+      "inputs": [],
+      "name": "ZeroRecordHash",
+      "type": "error"
+    },
+    {
+      "anonymous": false,
+      "inputs": [
+        {
+          "indexed": true,
+          "internalType": "bytes32",
+          "name": "recordHash",
+          "type": "bytes32"
+        },
+        {
+          "indexed": true,
+          "internalType": "bytes32",
+          "name": "postUrlHash",
+          "type": "bytes32"
+        },
+        {
+          "indexed": true,
+          "internalType": "address",
+          "name": "submitter",
+          "type": "address"
+        },
+        {
+          "indexed": false,
+          "internalType": "bytes32",
+          "name": "inputImageSha256",
+          "type": "bytes32"
+        },
+        {
+          "indexed": false,
+          "internalType": "bytes32",
+          "name": "faceCommitment",
+          "type": "bytes32"
+        },
+        {
+          "indexed": false,
+          "internalType": "bytes32",
+          "name": "postImageSha256",
+          "type": "bytes32"
+        },
+        {
+          "indexed": false,
+          "internalType": "uint64",
+          "name": "inputPHash",
+          "type": "uint64"
+        },
+        {
+          "indexed": false,
+          "internalType": "uint16",
+          "name": "similarityBps",
+          "type": "uint16"
+        },
+        {
+          "indexed": false,
+          "internalType": "uint64",
+          "name": "anchoredAt",
+          "type": "uint64"
+        },
+        {
+          "indexed": false,
+          "internalType": "string",
+          "name": "evidenceUri",
+          "type": "string"
+        }
+      ],
+      "name": "Anchored",
+      "type": "event"
+    },
+    {
+      "inputs": [
+        {
+          "internalType": "bytes32",
+          "name": "recordHash",
+          "type": "bytes32"
+        },
+        {
+          "internalType": "bytes32",
+          "name": "inputImageSha256",
+          "type": "bytes32"
+        },
+        {
+          "internalType": "bytes32",
+          "name": "faceCommitment",
+          "type": "bytes32"
+        },
+        {
+          "internalType": "bytes32",
+          "name": "postUrlHash",
+          "type": "bytes32"
+        },
+        {
+          "internalType": "bytes32",
+          "name": "postImageSha256",
+          "type": "bytes32"
+        },
+        {
+          "internalType": "uint64",
+          "name": "inputPHash",
+          "type": "uint64"
+        },
+        {
+          "internalType": "uint16",
+          "name": "similarityBps",
+          "type": "uint16"
+        },
+        {
+          "internalType": "string",
+          "name": "evidenceUri",
+          "type": "string"
+        }
+      ],
+      "name": "anchor",
+      "outputs": [
+        {
+          "internalType": "uint256",
+          "name": "index",
+          "type": "uint256"
+        }
+      ],
+      "stateMutability": "nonpayable",
+      "type": "function"
+    },
+    {
+      "inputs": [],
+      "name": "count",
+      "outputs": [
+        {
+          "internalType": "uint256",
+          "name": "",
+          "type": "uint256"
+        }
+      ],
+      "stateMutability": "view",
+      "type": "function"
+    },
+    {
+      "inputs": [
+        {
+          "internalType": "bytes32",
+          "name": "recordHash",
+          "type": "bytes32"
+        }
+      ],
+      "name": "exists",
+      "outputs": [
+        {
+          "internalType": "bool",
+          "name": "",
+          "type": "bool"
+        }
+      ],
+      "stateMutability": "view",
+      "type": "function"
+    },
+    {
+      "inputs": [
+        {
+          "internalType": "bytes32",
+          "name": "recordHash",
+          "type": "bytes32"
+        }
+      ],
+      "name": "get",
+      "outputs": [
+        {
+          "components": [
+            {
+              "internalType": "bytes32",
+              "name": "inputImageSha256",
+              "type": "bytes32"
+            },
+            {
+              "internalType": "bytes32",
+              "name": "faceCommitment",
+              "type": "bytes32"
+            },
+            {
+              "internalType": "bytes32",
+              "name": "postUrlHash",
+              "type": "bytes32"
+            },
+            {
+              "internalType": "bytes32",
+              "name": "postImageSha256",
+              "type": "bytes32"
+            },
+            {
+              "internalType": "uint64",
+              "name": "inputPHash",
+              "type": "uint64"
+            },
+            {
+              "internalType": "uint16",
+              "name": "similarityBps",
+              "type": "uint16"
+            },
+            {
+              "internalType": "uint64",
+              "name": "anchoredAt",
+              "type": "uint64"
+            },
+            {
+              "internalType": "address",
+              "name": "submitter",
+              "type": "address"
+            },
+            {
+              "internalType": "string",
+              "name": "evidenceUri",
+              "type": "string"
+            }
+          ],
+          "internalType": "struct FaceAnchorRegistry.Record",
+          "name": "",
+          "type": "tuple"
+        }
+      ],
+      "stateMutability": "view",
+      "type": "function"
+    },
+    {
+      "inputs": [
+        {
+          "internalType": "uint64",
+          "name": "a",
+          "type": "uint64"
+        },
+        {
+          "internalType": "uint64",
+          "name": "b",
+          "type": "uint64"
+        }
+      ],
+      "name": "hamming",
+      "outputs": [
+        {
+          "internalType": "uint8",
+          "name": "d",
+          "type": "uint8"
+        }
+      ],
+      "stateMutability": "pure",
+      "type": "function"
+    },
+    {
+      "inputs": [
+        {
+          "internalType": "uint256",
+          "name": "",
+          "type": "uint256"
+        }
+      ],
+      "name": "recordIds",
+      "outputs": [
+        {
+          "internalType": "bytes32",
+          "name": "",
+          "type": "bytes32"
+        }
+      ],
+      "stateMutability": "view",
+      "type": "function"
+    },
+    {
+      "inputs": [
+        {
+          "internalType": "bytes32",
+          "name": "recordHash",
+          "type": "bytes32"
+        },
+        {
+          "internalType": "bytes32",
+          "name": "inputImageSha256",
+          "type": "bytes32"
+        },
+        {
+          "internalType": "bytes32",
+          "name": "faceCommitment",
+          "type": "bytes32"
+        },
+        {
+          "internalType": "bytes32",
+          "name": "postUrlHash",
+          "type": "bytes32"
+        },
+        {
+          "internalType": "bytes32",
+          "name": "postImageSha256",
+          "type": "bytes32"
+        }
+      ],
+      "name": "verify",
+      "outputs": [
+        {
+          "internalType": "bool",
+          "name": "ok",
+          "type": "bool"
+        },
+        {
+          "internalType": "bool",
+          "name": "found",
+          "type": "bool"
+        },
+        {
+          "internalType": "bool",
+          "name": "imageOk",
+          "type": "bool"
+        },
+        {
+          "internalType": "bool",
+          "name": "faceOk",
+          "type": "bool"
+        },
+        {
+          "internalType": "bool",
+          "name": "postOk",
+          "type": "bool"
+        },
+        {
+          "internalType": "bool",
+          "name": "postImageOk",
+          "type": "bool"
+        }
+      ],
+      "stateMutability": "view",
+      "type": "function"
+    }
+  ],
+  "bytecode": "0x6080604052348015600e575f80fd5b50610bfa8061001c5f395ff3fe608060405234801561000f575f80fd5b506004361061007a575f3560e01c80638eaa6ac0116100585780638eaa6ac01461012557806397ddbef9146101455780639f25e8be14610158578063bcaf00c31461016b575f80fd5b806306661abd1461007e57806338a699a4146100955780637cd633d8146100d9575b5f80fd5b6001545b6040519081526020015b60405180910390f35b6100c96100a336600461076a565b5f90815260208190526040902060040154600160501b90046001600160401b0316151590565b604051901515815260200161008c565b6100ec6100e7366004610781565b610190565b604080519615158752941515602087015292151593850193909352151560608401529015156080830152151560a082015260c00161008c565b61013861013336600461076a565b610326565b60405161008c91906107e6565b61008261015336600461076a565b610494565b6100826101663660046108a4565b6104b3565b61017e610179366004610967565b610730565b60405160ff909116815260200161008c565b5f85815260208181526040808320815161012081018352815481526001820154938101939093526002810154918301919091526003810154606083015260048101546001600160401b03808216608085015261ffff600160401b83041660a0850152600160501b9091041660c083015260058101546001600160a01b031660e0830152600681018054849384938493849384938493909290916101008401919061023990610998565b80601f016020809104026020016040519081016040528092919081815260200182805461026590610998565b80156102b05780601f10610287576101008083540402835291602001916102b0565b820191905f5260205f20905b81548152906001019060200180831161029357829003601f168201915b50505050508152505090508060c001516001600160401b03165f141595508a815f01511494508981602001511493508881604001511492508781606001511491508580156102fb5750845b80156103045750835b801561030d5750825b80156103165750815b9650509550955095509550955095565b60408051610120810182525f8082526020820181905291810182905260608082018390526080820183905260a0820183905260c0820183905260e08201929092526101008101919091525f8281526020818152604091829020825161012081018452815481526001820154928101929092526002810154928201929092526003820154606082015260048201546001600160401b03808216608084015261ffff600160401b83041660a0840152600160501b9091041660c082015260058201546001600160a01b031660e08201526006820180549192916101008401919061040d90610998565b80601f016020809104026020016040519081016040528092919081815260200182805461043990610998565b80156104845780601f1061045b57610100808354040283529160200191610484565b820191905f5260205f20905b81548152906001019060200180831161046757829003601f168201915b5050505050815250509050919050565b600181815481106104a3575f80fd5b5f91825260209091200154905081565b5f896104d25760405163d356b41760e01b815260040160405180910390fd5b5f8a81526020819052604090206004810154600160501b90046001600160401b0316156105335760048181015460405163798502d160e11b81529182018d9052600160501b90046001600160401b0316602482015260440160405180910390fd5b6040518061012001604052808b81526020018a8152602001898152602001888152602001876001600160401b031681526020018661ffff168152602001426001600160401b03168152602001336001600160a01b0316815260200185858080601f0160208091040260200160405190810160405280939291908181526020018383808284375f9201829052509390945250508d815260208181526040918290208451815590840151600182015590830151600282015560608301516003820155608083015160048201805460a086015160c08701516001600160401b03908116600160501b0267ffffffffffffffff60501b1961ffff909316600160401b0269ffffffffffffffffffff199094169190951617919091171691909117905560e08301516005820180546001600160a01b039092166001600160a01b031990921691909117905561010083015190915060068201906106919082610a30565b50506001805480820182555f919091527fb10e2d527612073b26eecdfd717e6a320cf44b4afac2b0732d9fcbe2b7fa0cf6018c905550604051339089908d907f6cbf42448775b0dec9f5f32922ecf72fc614acfd1849c13a0a7e463e381bd7999061070b908f908f908e908e908e9042908f908f90610aea565b60405180910390a4600180546107219190610b6e565b9b9a5050505050505050505050565b5f8282185b6001600160401b03811615610763578161074e81610b87565b925061075d9050600182610ba5565b16610735565b5092915050565b5f6020828403121561077a575f80fd5b5035919050565b5f805f805f60a08688031215610795575f80fd5b505083359560208501359550604085013594606081013594506080013592509050565b5f81518084528060208401602086015e5f602082860101526020601f19601f83011685010191505092915050565b60208152815160208201526020820151604082015260408201516060820152606082015160808201525f608083015161082a60a08401826001600160401b03169052565b5060a083015161ffff811660c08401525060c08301516001600160401b03811660e08401525060e08301516001600160a01b03811661010084015250610100830151610120808401526108816101408401826107b8565b949350505050565b80356001600160401b038116811461089f575f80fd5b919050565b5f805f805f805f805f6101008a8c0312156108bd575f80fd5b8935985060208a0135975060408a0135965060608a0135955060808a013594506108e960a08b01610889565b935060c08a013561ffff811681146108ff575f80fd5b925060e08a01356001600160401b03811115610919575f80fd5b8a01601f81018c13610929575f80fd5b80356001600160401b0381111561093e575f80fd5b8c602082840101111561094f575f80fd5b60208201935080925050509295985092959850929598565b5f8060408385031215610978575f80fd5b61098183610889565b915061098f60208401610889565b90509250929050565b600181811c908216806109ac57607f821691505b6020821081036109ca57634e487b7160e01b5f52602260045260245ffd5b50919050565b634e487b7160e01b5f52604160045260245ffd5b601f821115610a2b57805f5260205f20601f840160051c81016020851015610a095750805b601f840160051c820191505b81811015610a28575f8155600101610a15565b50505b505050565b81516001600160401b03811115610a4957610a496109d0565b610a5d81610a578454610998565b846109e4565b6020601f821160018114610a8f575f8315610a785750848201515b5f19600385901b1c1916600184901b178455610a28565b5f84815260208120601f198516915b82811015610abe5787850151825560209485019460019092019101610a9e565b5084821015610adb57868401515f19600387901b60f8161c191681555b50505050600190811b01905550565b8881528760208201528660408201526001600160401b038616606082015261ffff851660808201526001600160401b03841660a082015260e060c08201528160e082015281836101008301375f81830161010090810191909152601f909201601f19160101979650505050505050565b634e487b7160e01b5f52601160045260245ffd5b81810381811115610b8157610b81610b5a565b92915050565b5f60ff821660ff8103610b9c57610b9c610b5a565b60010192915050565b6001600160401b038281168282160390811115610b8157610b81610b5a56fea2646970667358221220fdc5c953447785eec1e7f268c7cf39c942fa9264f5c221f1f66ec55830fa48cb64736f6c634300081a0033",
+  "source": "FaceAnchorRegistry.sol"
+}

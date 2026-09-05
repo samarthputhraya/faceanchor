@@ -1,0 +1,513 @@
+{
+  "contractName": "FaceAnchorRegistryV2",
+  "solcVersion": "0.8.26",
+  "optimizer": {
+    "enabled": true,
+    "runs": 200
+  },
+  "viaIR": true,
+  "abi": [
+    {
+      "inputs": [
+        {
+          "internalType": "address",
+          "name": "verifier_",
+          "type": "address"
+        }
+      ],
+      "stateMutability": "nonpayable",
+      "type": "constructor"
+    },
+    {
+      "inputs": [],
+      "name": "BadProof",
+      "type": "error"
+    },
+    {
+      "inputs": [
+        {
+          "internalType": "uint16",
+          "name": "similarityBps",
+          "type": "uint16"
+        }
+      ],
+      "name": "BelowThreshold",
+      "type": "error"
+    },
+    {
+      "inputs": [],
+      "name": "NegativeDot",
+      "type": "error"
+    },
+    {
+      "inputs": [
+        {
+          "internalType": "bytes32",
+          "name": "recordHash",
+          "type": "bytes32"
+        },
+        {
+          "internalType": "uint64",
+          "name": "anchoredAt",
+          "type": "uint64"
+        }
+      ],
+      "name": "RecordExists",
+      "type": "error"
+    },
+    {
+      "inputs": [
+        {
+          "internalType": "uint16",
+          "name": "claimedBps",
+          "type": "uint16"
+        }
+      ],
+      "name": "SimilarityNotProven",
+      "type": "error"
+    },
+    {
+      "inputs": [],
+      "name": "ZeroRecordHash",
+      "type": "error"
+    },
+    {
+      "anonymous": false,
+      "inputs": [
+        {
+          "indexed": true,
+          "internalType": "bytes32",
+          "name": "recordHash",
+          "type": "bytes32"
+        },
+        {
+          "indexed": true,
+          "internalType": "bytes32",
+          "name": "postUrlHash",
+          "type": "bytes32"
+        },
+        {
+          "indexed": true,
+          "internalType": "address",
+          "name": "submitter",
+          "type": "address"
+        },
+        {
+          "indexed": false,
+          "internalType": "bytes32",
+          "name": "inputImageSha256",
+          "type": "bytes32"
+        },
+        {
+          "indexed": false,
+          "internalType": "bytes32",
+          "name": "faceCommitment",
+          "type": "bytes32"
+        },
+        {
+          "indexed": false,
+          "internalType": "bytes32",
+          "name": "postImageSha256",
+          "type": "bytes32"
+        },
+        {
+          "indexed": false,
+          "internalType": "uint64",
+          "name": "inputPHash",
+          "type": "uint64"
+        },
+        {
+          "indexed": false,
+          "internalType": "uint16",
+          "name": "similarityBps",
+          "type": "uint16"
+        },
+        {
+          "indexed": false,
+          "internalType": "uint64",
+          "name": "anchoredAt",
+          "type": "uint64"
+        },
+        {
+          "indexed": false,
+          "internalType": "uint256",
+          "name": "zkCommitmentA",
+          "type": "uint256"
+        },
+        {
+          "indexed": false,
+          "internalType": "uint256",
+          "name": "zkCommitmentB",
+          "type": "uint256"
+        },
+        {
+          "indexed": false,
+          "internalType": "string",
+          "name": "evidenceUri",
+          "type": "string"
+        }
+      ],
+      "name": "Anchored",
+      "type": "event"
+    },
+    {
+      "inputs": [],
+      "name": "DOT_OFFSET",
+      "outputs": [
+        {
+          "internalType": "uint256",
+          "name": "",
+          "type": "uint256"
+        }
+      ],
+      "stateMutability": "view",
+      "type": "function"
+    },
+    {
+      "inputs": [],
+      "name": "MIN_SIMILARITY_BPS",
+      "outputs": [
+        {
+          "internalType": "uint16",
+          "name": "",
+          "type": "uint16"
+        }
+      ],
+      "stateMutability": "view",
+      "type": "function"
+    },
+    {
+      "inputs": [
+        {
+          "components": [
+            {
+              "internalType": "bytes32",
+              "name": "recordHash",
+              "type": "bytes32"
+            },
+            {
+              "internalType": "bytes32",
+              "name": "inputImageSha256",
+              "type": "bytes32"
+            },
+            {
+              "internalType": "bytes32",
+              "name": "faceCommitment",
+              "type": "bytes32"
+            },
+            {
+              "internalType": "bytes32",
+              "name": "postUrlHash",
+              "type": "bytes32"
+            },
+            {
+              "internalType": "bytes32",
+              "name": "postImageSha256",
+              "type": "bytes32"
+            },
+            {
+              "internalType": "uint64",
+              "name": "inputPHash",
+              "type": "uint64"
+            },
+            {
+              "internalType": "uint16",
+              "name": "similarityBps",
+              "type": "uint16"
+            },
+            {
+              "internalType": "string",
+              "name": "evidenceUri",
+              "type": "string"
+            }
+          ],
+          "internalType": "struct FaceAnchorRegistryV2.Claim",
+          "name": "claim",
+          "type": "tuple"
+        },
+        {
+          "components": [
+            {
+              "internalType": "uint256[2]",
+              "name": "a",
+              "type": "uint256[2]"
+            },
+            {
+              "internalType": "uint256[2][2]",
+              "name": "b",
+              "type": "uint256[2][2]"
+            },
+            {
+              "internalType": "uint256[2]",
+              "name": "c",
+              "type": "uint256[2]"
+            },
+            {
+              "internalType": "uint256[5]",
+              "name": "pubSignals",
+              "type": "uint256[5]"
+            }
+          ],
+          "internalType": "struct FaceAnchorRegistryV2.Proof",
+          "name": "proof",
+          "type": "tuple"
+        }
+      ],
+      "name": "anchor",
+      "outputs": [
+        {
+          "internalType": "uint256",
+          "name": "index",
+          "type": "uint256"
+        }
+      ],
+      "stateMutability": "nonpayable",
+      "type": "function"
+    },
+    {
+      "inputs": [],
+      "name": "count",
+      "outputs": [
+        {
+          "internalType": "uint256",
+          "name": "",
+          "type": "uint256"
+        }
+      ],
+      "stateMutability": "view",
+      "type": "function"
+    },
+    {
+      "inputs": [
+        {
+          "internalType": "bytes32",
+          "name": "recordHash",
+          "type": "bytes32"
+        }
+      ],
+      "name": "exists",
+      "outputs": [
+        {
+          "internalType": "bool",
+          "name": "",
+          "type": "bool"
+        }
+      ],
+      "stateMutability": "view",
+      "type": "function"
+    },
+    {
+      "inputs": [
+        {
+          "internalType": "bytes32",
+          "name": "recordHash",
+          "type": "bytes32"
+        }
+      ],
+      "name": "get",
+      "outputs": [
+        {
+          "components": [
+            {
+              "internalType": "bytes32",
+              "name": "inputImageSha256",
+              "type": "bytes32"
+            },
+            {
+              "internalType": "bytes32",
+              "name": "faceCommitment",
+              "type": "bytes32"
+            },
+            {
+              "internalType": "bytes32",
+              "name": "postUrlHash",
+              "type": "bytes32"
+            },
+            {
+              "internalType": "bytes32",
+              "name": "postImageSha256",
+              "type": "bytes32"
+            },
+            {
+              "internalType": "uint64",
+              "name": "inputPHash",
+              "type": "uint64"
+            },
+            {
+              "internalType": "uint16",
+              "name": "similarityBps",
+              "type": "uint16"
+            },
+            {
+              "internalType": "uint64",
+              "name": "anchoredAt",
+              "type": "uint64"
+            },
+            {
+              "internalType": "address",
+              "name": "submitter",
+              "type": "address"
+            },
+            {
+              "internalType": "uint256",
+              "name": "zkCommitmentA",
+              "type": "uint256"
+            },
+            {
+              "internalType": "uint256",
+              "name": "zkCommitmentB",
+              "type": "uint256"
+            },
+            {
+              "internalType": "uint256",
+              "name": "dot",
+              "type": "uint256"
+            },
+            {
+              "internalType": "uint256",
+              "name": "normA",
+              "type": "uint256"
+            },
+            {
+              "internalType": "uint256",
+              "name": "normB",
+              "type": "uint256"
+            },
+            {
+              "internalType": "string",
+              "name": "evidenceUri",
+              "type": "string"
+            }
+          ],
+          "internalType": "struct FaceAnchorRegistryV2.Record",
+          "name": "",
+          "type": "tuple"
+        }
+      ],
+      "stateMutability": "view",
+      "type": "function"
+    },
+    {
+      "inputs": [
+        {
+          "internalType": "uint64",
+          "name": "a",
+          "type": "uint64"
+        },
+        {
+          "internalType": "uint64",
+          "name": "b",
+          "type": "uint64"
+        }
+      ],
+      "name": "hamming",
+      "outputs": [
+        {
+          "internalType": "uint8",
+          "name": "d",
+          "type": "uint8"
+        }
+      ],
+      "stateMutability": "pure",
+      "type": "function"
+    },
+    {
+      "inputs": [
+        {
+          "internalType": "uint256",
+          "name": "",
+          "type": "uint256"
+        }
+      ],
+      "name": "recordIds",
+      "outputs": [
+        {
+          "internalType": "bytes32",
+          "name": "",
+          "type": "bytes32"
+        }
+      ],
+      "stateMutability": "view",
+      "type": "function"
+    },
+    {
+      "inputs": [],
+      "name": "verifier",
+      "outputs": [
+        {
+          "internalType": "contract IGroth16Verifier",
+          "name": "",
+          "type": "address"
+        }
+      ],
+      "stateMutability": "view",
+      "type": "function"
+    },
+    {
+      "inputs": [
+        {
+          "internalType": "bytes32",
+          "name": "recordHash",
+          "type": "bytes32"
+        },
+        {
+          "internalType": "bytes32",
+          "name": "inputImageSha256",
+          "type": "bytes32"
+        },
+        {
+          "internalType": "bytes32",
+          "name": "faceCommitment",
+          "type": "bytes32"
+        },
+        {
+          "internalType": "bytes32",
+          "name": "postUrlHash",
+          "type": "bytes32"
+        },
+        {
+          "internalType": "bytes32",
+          "name": "postImageSha256",
+          "type": "bytes32"
+        }
+      ],
+      "name": "verify",
+      "outputs": [
+        {
+          "internalType": "bool",
+          "name": "ok",
+          "type": "bool"
+        },
+        {
+          "internalType": "bool",
+          "name": "found",
+          "type": "bool"
+        },
+        {
+          "internalType": "bool",
+          "name": "imageOk",
+          "type": "bool"
+        },
+        {
+          "internalType": "bool",
+          "name": "faceOk",
+          "type": "bool"
+        },
+        {
+          "internalType": "bool",
+          "name": "postOk",
+          "type": "bool"
+        },
+        {
+          "internalType": "bool",
+          "name": "postImageOk",
+          "type": "bool"
+        }
+      ],
+      "stateMutability": "view",
+      "type": "function"
+    }
+  ],
+  "bytecode": "0x60a034606f57601f610f7338819003918201601f19168301916001600160401b03831184841017607357808492602094604052833981010312606f57516001600160a01b03811690819003606f57608052604051610eeb908161008882396080518181816106b80152610d630152f35b5f80fd5b634e487b7160e01b5f52604160045260245ffdfe6080806040526004361015610012575f80fd5b5f3560e01c90816306661abd14610d92575080632b7ac3f314610d4e578063346f95cc14610d3157806338a699a414610cf75780633f28396514610cdb5780633f5bf317146106025780637cd633d8146103fd5780638eaa6ac01461015b57806397ddbef9146101235763bcaf00c31461008a575f80fd5b3461011f57604036600319011261011f576004356001600160401b038116810361011f576024356001600160401b038116810361011f575f91185b6001600160401b0381169182156101115760ff1660ff81146100fd57600101915f1901906001600160401b0382116100fd57166100c5565b634e487b7160e01b5f52601160045260245ffd5b60209060ff60405191168152f35b5f80fd5b3461011f57602036600319011261011f5760043560015481101561011f5761014c602091610dac565b90549060031b1c604051908152f35b3461011f57602036600319011261011f5760606101a060405161017d81610e2d565b5f81525f60208201525f60408201525f838201525f60808201525f60a08201525f60c08201525f60e08201525f6101008201525f6101208201525f6101408201525f6101608201525f61018082015201526004355f525f60205260405f206040516101e781610e2d565b81548152600182015491602082019283528160028201549160408201928352600381015460608301908152600482015460808401906001600160401b038116825260a085019061ffff8160401c1682526001600160401b0360c087019160501c16815260018060a01b036005860154169060e08701918252600686015492610100880193845260078701549461012089019586526008880154966101408a01978852600b60098a0154996101608c019a8b52610180600a8201549c019b8c52019a604051809c5f908054906102bb82610e6a565b80855291600181169081156103df57506001146103a3575b5050036102e0908d610e49565b6101a08d019b8c52604051809e819e602083525160208301525190604001525160608d01525160808c0152516001600160401b031660a08b01525161ffff1660c08a0152516001600160401b031660e0890152600160a01b6001900390511661010088015251610120870152516101408601525161016085015251610180840152516101a0830152516101c082016101c0905280518091816101e085015260200161020084015e808201610200015f9052601f1990601f01168101036102000190f35b5f908152602081209092505b8183106103c457505081016020015f806102d3565b80602092948385600194549201015201910190918e926103af565b9150506020925060ff191682840152151560051b8201015f806102d3565b3461011f5760a036600319011261011f576004355f525f60205260405f2060405161042781610e2d565b8154815260018201546020820190815260028301546040830190815260038401549060608401918252600b6004860154956001600160401b038716608087015261ffff8760401c1660a08701526001600160401b0360c087019760501c16875260018060a01b0360058201541660e08701526006810154610100870152600781015461012087015260088101546101408701526009810154610160870152600a8101546101808701520194604051955f908054906104e482610e6a565b808a5291600181169081156105db575060011461059e575b5050908661051660c0986001600160401b03940382610e49565b6101a0870152511615159360243590511492604435905114906064359051149160843590511492848095610595575b8561058c575b85610583575b8561057a575b6040519515158652602086015260408501526060840152608083015260a0820152f35b94508394610557565b94508294610551565b9450819461054b565b94508094610545565b5f908152602081209092505b8183106105c15750508601602001866105166104fc565b6001816020929493945483858d01015201910191906105aa565b60ff19166020808c019190915292151560051b8a01909201925088915061051690506104fc565b3461011f576101c036600319011261011f576001600160401b036004351161011f576101006004353603600319011261011f576101a036602319011261011f576004356004013515610ccc57600435600401355f525f6020526001600160401b03600460405f20015460501c1680610cb057604080516334baeab960e01b8152906024600483013760645f604483015b60028210610c9a5783604060e460c483013760a06101246101048301376020816101a4817f00000000000000000000000000000000000000000000000000000000000000006001600160a01b03165afa908115610c8f575f91610c54575b5015610c455761016435628000008110610c365780627fffff198101116100fd5761074161ffff61072560c460043501610dec565b1661073c6101a4359161073c610184359180610ea2565b610ea2565b610751627fffff19830180610ea2565b906305f5e1008202918083046305f5e10014901517156100fd5711610c1257610fa061ffff61078460c460043501610dec565b1610610bee5761ffff9060a4600435019061079e82610dd8565b6107ac60c460043501610dec565b9060e460043501926107c384600435600401610dfb565b9690936001600160401b03604051946107db86610e2d565b6024600435013586526044600435013560208701526064600435013560408701526084600435013560608701521660808501521660a08301526001600160401b03421660c08301523360e08301526101243561010083015261014435610120830152627fffff1901610140820152610184356101608201526101a4356101808201526001600160401b038511610b295760405194610883601f8201601f191660200187610e49565b808652368184011161011f576020815f92600b95838a0137870101526101a08101948552600435600401355f525f60205261018060405f209180518355602081015160018401556040810151600284015560608101516003840155600483016001600160401b0360808301511681549069ffff000000000000000060a085015160401b16906001600160401b0360501b60c086015160501b169271ffffffffffffffffffffffffffffffffffff191617171790556005830160018060a01b0360e0830151166bffffffffffffffffffffffff60a01b82541617905561010081015160068401556101208101516007840155610140810151600884015561016081015160098401550151600a8201550192519283516001600160401b038111610b29576109af8254610e6a565b601f8111610ba9575b50602094601f8211600114610b48579481929394955f92610b3d575b50508160011b915f199060031b1c19161790555b60015468010000000000000000811015610b295761ffff92610a13826001610a329401600155610dac565b81549060031b9060043560040135821b915f19901b1916179055610dd8565b90610a50610a4460c460043501610dec565b91600435600401610dfb565b9384926001600160401b03604051956024600435013587526044600435013560208801526084600435013560408801521660608601521660808401526001600160401b03421660a08401526101243560c08401526101443560e0840152610120610100840152816101208401526101408301375f610140838301015233917f3b9126a513c5698615b6b92e6e271a1c42dce93872a2370d0ca3db96d272faba6064600435013592610140816004356004013594601f80199101168101030190a46001545f1981019081116100fd57602090604051908152f35b634e487b7160e01b5f52604160045260245ffd5b0151905085806109d4565b601f19821695835f52805f20915f5b888110610b9157508360019596979810610b79575b505050811b0190556109e8565b01515f1960f88460031b161c19169055858080610b6c565b91926020600181928685015181550194019201610b57565b825f5260205f20601f830160051c81019160208410610be4575b601f0160051c01905b818110610bd957506109b8565b5f8155600101610bcc565b9091508190610bc3565b61ffff610bff60c460043501610dec565b636571fce760e11b5f521660045260245ffd5b61ffff610c2360c460043501610dec565b63c5f7ffe360e01b5f521660045260245ffd5b63a2c654bb60e01b5f5260045ffd5b637ca55c7760e01b5f5260045ffd5b90506020813d602011610c87575b81610c6f60209383610e49565b8101031261011f5751801515810361011f57816106f0565b3d9150610c62565b6040513d5f823e3d90fd5b6040808281866001953701930191019091610692565b63798502d160e11b5f526004356004013560045260245260445ffd5b63d356b41760e01b5f5260045ffd5b3461011f575f36600319011261011f576020604051610fa08152f35b3461011f57602036600319011261011f576004355f525f60205260206001600160401b03600460405f20015460501c161515604051908152f35b3461011f575f36600319011261011f576020604051628000008152f35b3461011f575f36600319011261011f576040517f00000000000000000000000000000000000000000000000000000000000000006001600160a01b03168152602090f35b3461011f575f36600319011261011f576020906001548152f35b600154811015610dc45760015f5260205f2001905f90565b634e487b7160e01b5f52603260045260245ffd5b356001600160401b038116810361011f5790565b3561ffff8116810361011f5790565b903590601e198136030182121561011f57018035906001600160401b03821161011f5760200191813603831361011f57565b6101c081019081106001600160401b03821117610b2957604052565b90601f801991011681019081106001600160401b03821117610b2957604052565b90600182811c92168015610e98575b6020831014610e8457565b634e487b7160e01b5f52602260045260245ffd5b91607f1691610e79565b818102929181159184041417156100fd5756fea26469706673582212209402dd2b9e6578947f1409ebfad805ec7d5dd052a3bb4c3c8fb92cd1caae2ea464736f6c634300081a0033",
+  "source": "FaceAnchorRegistryV2.sol"
+}

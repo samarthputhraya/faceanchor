@@ -13,6 +13,11 @@ __pycache__/
 build/
 dist/
 
+# ...but the compiled contract artifacts ARE committed: CI then needs no
+# solc download, and viaIR compilation is slow.
+!contracts/build/
+!contracts/build/*.json
+
 # models (large, downloaded on first run)
 models/*.onnx
 models/*.zip
