@@ -221,9 +221,42 @@ def check_disk() -> Check:
     return Check("disk space", OK if free > 500 else WARN, f"{free} MB free")
 
 
+def check_zk(chain: str = "base-sepolia") -> list[Check]:
+    """The proving toolchain, and whether a proof-gated registry is deployed.
+
+    Every one of these is a WARN, never a FAIL: without the toolchain the
+    pipeline still runs end to end and anchors to v1. Only the proof is lost.
+    """
+    from .zk import prover
+
+    out: list[Check] = []
+    ok, why = prover.available()
+    out.append(Check(
+        "zk toolchain",
+        OK if ok else WARN,
+        "ready to prove" if ok else why,
+        "" if ok else "powershell -ExecutionPolicy Bypass -File zk/build.ps1",
+    ))
+
+    try:
+        from .chain.client import ChainClient
+
+        c = ChainClient(chain, registry="v2")
+        dep = c.load_deployment()
+        if dep:
+            out.append(Check("v2 registry", OK,
+                             f"{dep['contract']}  verifier {dep.get('verifier', '?')}"))
+        else:
+            out.append(Check("v2 registry", WARN, f"not deployed on {chain}",
+                             f"python -m faceanchor deploy --chain {chain} --registry v2"))
+    except Exception as exc:  # noqa: BLE001 - reported, never fatal
+        out.append(Check("v2 registry", WARN, f"{type(exc).__name__}: {exc}"))
+    return out
+
+
 def run_all(chain: str = "base-sepolia", image: str = "") -> list[Check]:
     checks = [check_python(), *check_imports(), *check_models(), *check_keys(),
-              *check_network(), *check_chain(chain), check_disk()]
+              *check_network(), *check_chain(chain), *check_zk(chain), check_disk()]
     if image:
         checks.extend(check_image(image))
     return checks
