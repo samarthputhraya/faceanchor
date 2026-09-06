@@ -17,6 +17,18 @@ forged       0.9999   REJECTED   SimilarityNotProven
 off-by-one   0.9917   REJECTED   SimilarityNotProven
 ```
 
+And you do not have to take the match itself on trust either &mdash; the face
+found in the post is re-derivable from published data:
+
+```
+$ python -m faceanchor replicate
+model identity           PASS
+published image sha256   PASS
+re-derived commitment    PASS      <- image -> model -> salt -> the committed vector
+re-derived embedding     PASS      cosine 1.0000
+live post image          PASS      hamming 0 against the live post
+```
+
 [![ci](https://github.com/samarthputhraya/faceanchor/actions/workflows/ci.yml/badge.svg)](https://github.com/samarthputhraya/faceanchor/actions/workflows/ci.yml)
 ![python](https://img.shields.io/badge/python-3.12-blue)
 ![chain](https://img.shields.io/badge/chain-Base%20Sepolia-0052ff)
@@ -52,9 +64,16 @@ Plus one the task did not ask for:
    ~10 s on CPU) shows that the published dot product and norms belong to the
    two committed embeddings, without revealing either. `FaceAnchorRegistryV2`
    verifies it on-chain and rejects any similarity the proof does not support
-   &mdash; including one basis point too many. Full detail, including what the
-   proof deliberately does **not** cover, is in
-   [docs/zero-knowledge-proof.md](docs/zero-knowledge-proof.md).
+   &mdash; including one basis point too many.
+5. **And the face in the post can be re-derived by anyone.** The post image is
+   public, so its salt is published too: `python -m faceanchor replicate` runs
+   the same model over the published image and reproduces the committed vector
+   from the bundle alone, with no secret and no proving key.
+
+Exactly which bindings that leaves proven, and which it does not, is set out in
+[docs/what-is-proven.md](docs/what-is-proven.md); the circuit itself, the
+constraint budget and the trusted-setup caveat are in
+[docs/zero-knowledge-proof.md](docs/zero-knowledge-proof.md).
 
 ```mermaid
 flowchart LR
@@ -127,6 +146,7 @@ python -m faceanchor anchor  --chain base-sepolia   # v2 when a proof exists
 python -m faceanchor verify  --biometric
 python -m faceanchor tamper-demo --field caption
 python -m faceanchor forge-demo                     # the chain refuses a lie
+python -m faceanchor replicate                      # re-derive the post face
 ```
 
 `forge-demo` asks the live contract to accept a similarity the proof does not
@@ -180,8 +200,11 @@ commitment, the post URL hash, the post image SHA-256, a 64-bit perceptual
 hash, the similarity in basis points, the submitter and a timestamp. v2 adds
 the two Poseidon commitments and the proven dot product and squared norms.
 
-**Never on-chain:** the photograph, either face embedding, any salt, or any
-name. Face embeddings can be inverted back into a recognisable face, so
+**Never on-chain and never published:** the photograph, either face embedding,
+the scan-side salt, or any name. The *post-side* salt **is** published, on
+purpose: that face is in a public image, so salting it hides nothing and
+publishing it is what lets anyone re-derive the commitment. See
+[docs/what-is-proven.md](docs/what-is-proven.md). Face embeddings can be inverted back into a recognisable face, so
 publishing one would publish a biometric. The salt stays in
 `face_secret.json`, which is gitignored, and that is what makes the commitment
 binding rather than guessable.
@@ -248,6 +271,7 @@ the proof-gated registry.
 | Transaction | [`0xd77c00e8958b500c…`](https://sepolia.basescan.org/tx/0xd77c00e8958b500c7f10ccdaf3a33453679e4fcc5bda61764b2e352c75592bd7) |
 | Gas | 634,747, including on-chain proof verification |
 | Forge attempt | 0.9999 and 0.9917 both rejected `SimilarityNotProven` |
+| Replication | 5 of 5 checks pass from published data; live post pHash distance 0 |
 
 The proof in that bundle can be checked without the repo's proving key or any
 of the biometric material:
@@ -311,7 +335,7 @@ reasoning behind the thresholds: [docs/face-matching.md](docs/face-matching.md).
 pytest -q
 ```
 
-55 tests, no network, no API keys and no model download, so they also run in CI
+66 tests, no network, no API keys and no model download, so they also run in CI
 on Ubuntu and Windows. They cover canonical byte stability across key order,
 float drift and unicode; the record hash equalling `sha256sum record.json`; the
 commitment being reproducible, salted and binding; URL canonicalisation and
@@ -324,15 +348,18 @@ engines counted as two candidates.
 
 ## Known limitations
 
-- **The proof does not bind the embeddings to the images.** It proves the
-  published similarity is the true cosine of the two *committed* vectors. It
-  does not prove those vectors came from running ArcFace on the two pictures —
-  that needs the model inside the circuit, which is orders of magnitude larger.
-  Someone who fabricates **both** vectors can satisfy the circuit by choosing
-  `A == B`. What they cannot do is inflate the similarity of a pair they
-  committed to, or retrofit `commitmentA`, which is fixed during `scan` before
-  the search runs. Binding a vector to an image is still available via
-  `verify --biometric`, which re-runs the model against `input.jpg`.
+- **The scan-side face is not publicly bound to its own image.** The proof
+  binds the similarity to two commitments; `replicate` binds the *post-side*
+  commitment to the published image, so that half needs no trust. The scanned
+  image is private by design, and nothing published proves the scanned vector
+  came from it — that would need ArcFace inside the circuit, which is roughly
+  15× beyond the largest trusted setup that exists. Two things narrow it:
+  `commitmentA` is fixed during `scan` before the search runs, so it cannot be
+  retrofitted; and because the post side *is* pinned, a forger must commit to a
+  vector genuinely close to a publicly verifiable target. Full binding is
+  available on request via `verify --biometric`, which re-runs the model against
+  `input.jpg` using the withheld secret.
+  See [docs/what-is-proven.md](docs/what-is-proven.md).
 - **The trusted setup is a development ceremony.** Every public Powers of Tau
   mirror in the snarkjs README returns `AccessDenied` as of September 2026, so
   `zk/build.ps1` runs its own. Whoever ran it could in principle forge proofs.
@@ -401,7 +428,7 @@ contracts/           v1, v2 and the generated verifier, with build artifacts
 deployments/         deployed address, deploy transaction and block per chain
 zk/                  facematch.circom, the build script, verification_key.json
 ui/                  React dashboard
-tests/               55 tests, no keys required
+tests/               66 tests, no keys required
 verify.py            standalone verifier: web3 and the standard library only
 demo/                public-figure portraits with their sources
 evidence/demo/       one sanitised real run, without the biometric secret
