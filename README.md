@@ -17,6 +17,11 @@ forged       0.9999   REJECTED   SimilarityNotProven
 off-by-one   0.9917   REJECTED   SimilarityNotProven
 ```
 
+**Or check it without installing anything:
+[samarthputhraya.github.io/faceanchor](https://samarthputhraya.github.io/faceanchor/)**
+— one page that fetches the published evidence, verifies the Groth16 proof in
+your browser, and reads the record back off Base Sepolia. No wallet, no clone.
+
 And you do not have to take the match itself on trust either &mdash; the face
 found in the post is re-derivable from published data:
 
