@@ -55,6 +55,9 @@ export default function App() {
   const [failedStep, setFailedStep] = useState(-1)
   const [camOn, setCamOn] = useState(false)
   const [tamperReport, setTamperReport] = useState(null)
+  const [forge, setForge] = useState(null)
+  const [forging, setForging] = useState(false)
+  const [forgeError, setForgeError] = useState('')
   const videoRef = useRef(null)
   const logRef = useRef(null)
 
@@ -122,6 +125,8 @@ export default function App() {
     setCandidates([])
     setState({})
     setTamperReport(null)
+    setForge(null)
+    setForgeError('')
     setFailedStep(-1)
 
     const body = new FormData()
@@ -189,6 +194,9 @@ export default function App() {
   }
 
   const verifyReport = state.verify
+  // The claim only holds if the honest similarity is the *only* one taken.
+  const forgeHeld = !!forge && forge.attempts?.[0]?.accepted
+    && !forge.attempts.slice(1).some((a) => a.accepted)
   const anchor = state.anchor
   const post = state.post
   const face = state.face
@@ -508,6 +516,78 @@ export default function App() {
                     className="mt-2 inline-flex items-center gap-1.5 text-[12px] text-accent hover:underline">
                     <ExternalLink size={13} /> view on the block explorer
                   </a>
+                )}
+              </SpotlightCard>
+            </Section>
+          )}
+
+          {anchor && (
+            <Section title="5b  try to forge it">
+              <SpotlightCard className="p-4" glow="255, 107, 107">
+                <p className="text-[12px] leading-relaxed text-mute">
+                  A registry that just stores a number is only as honest as whoever
+                  wrote it. Below, the same proof is re-submitted three times with
+                  three different similarities claimed against it &mdash; the honest
+                  one, an inflated one, and one a single basis point too high.
+                  Each goes through <span className="mono">eth_call</span>, which
+                  runs the real contract against real chain state and throws the
+                  result away: no gas, nothing written.
+                </p>
+                <button
+                  type="button"
+                  disabled={forging}
+                  onClick={async () => {
+                    setForging(true)
+                    setForgeError('')
+                    setForge(null)
+                    try {
+                      const body = new FormData()
+                      body.append('forged_bps', '9999')
+                      const r = await fetch(`/api/runs/${runId}/forge`, { method: 'POST', body })
+                      const j = await r.json()
+                      if (!r.ok) setForgeError(j.detail || 'the forge attempt could not run')
+                      else setForge(j)
+                    } catch {
+                      setForgeError('could not reach the chain')
+                    } finally {
+                      setForging(false)
+                    }
+                  }}
+                  className="mt-3 flex items-center gap-2 rounded-md border border-edge px-3 py-1.5
+                             text-[12px] hover:border-bad/60 hover:text-bad disabled:opacity-50"
+                >
+                  {forging
+                    ? <><Loader2 className="animate-spin" size={13} /> asking the chain…</>
+                    : <><ShieldAlert size={13} /> try to forge it</>}
+                </button>
+
+                {forgeError && <p className="mono mt-3 text-[12px] text-bad">{forgeError}</p>}
+
+                {forge && (
+                  <motion.div initial={{ opacity: 0 }} animate={{ opacity: 1 }} className="mt-3">
+                    <div className="space-y-1">
+                      {forge.attempts.map((a) => (
+                        <div key={a.label} className="flex items-center gap-2 text-[12px]">
+                          {a.accepted ? <CheckCircle2 size={13} className="shrink-0 text-good" />
+                            : <XCircle size={13} className="shrink-0 text-bad" />}
+                          <span className="w-24 shrink-0 text-mute">{a.label}</span>
+                          <span className="mono w-16 shrink-0 text-right">
+                            {(a.claimed_bps / 10000).toFixed(4)}
+                          </span>
+                          <span className={`mono ${a.accepted ? 'text-good' : 'text-bad'}`}>
+                            {a.accepted ? 'ACCEPTED' : `REJECTED  ${a.error}`}
+                          </span>
+                        </div>
+                      ))}
+                    </div>
+                    <p className={`mt-3 border-t border-edge pt-3 text-[12px] ${
+                      forgeHeld ? 'text-good' : 'text-bad'}`}>
+                      {forge.conclusion}
+                    </p>
+                    <p className="mono mt-1 text-[11px] text-mute">
+                      {forge.method} · {forge.contract}
+                    </p>
+                  </motion.div>
                 )}
               </SpotlightCard>
             </Section>

@@ -137,7 +137,7 @@ async def run_state(run_id: str):
     out: dict = {"run_id": run_id, "done": RUNS.get(run_id, {}).get("done", not d.exists())}
     for name, key in (("face.json", "face"), ("candidates.json", "candidates"),
                       ("post.json", "post"), ("zk.json", "zk"), ("replicate.json", "replicate"),
-                      ("anchor.json", "anchor"),
+                      ("anchor.json", "anchor"), ("forge_demo.json", "forge"),
                       ("verify_log.json", "verify")):
         if (d / name).exists():
             out[key] = read_json(d / name)
@@ -158,6 +158,27 @@ async def replicate_run(run_id: str, live: bool = Form(False)):
         return replicate_mod.replicate(run_id, live=live)
     except SystemExit as exc:
         raise HTTPException(status_code=400, detail=str(exc.code)) from exc
+
+
+@app.post("/api/runs/{run_id}/forge")
+def forge_run(run_id: str, forged_bps: int = Form(9999)):
+    """Ask the chain to accept a similarity the proof does not support.
+
+    Sync, not async: the three attempts are blocking eth_calls, and a coroutine
+    would hold the event loop -- and every open SSE stream -- for their duration.
+
+    forge_demo exits non-zero when the outcome is not the expected
+    accept/reject/reject, but it has already written forge_demo.json by then, so
+    the dashboard is shown what actually happened rather than a bare error.
+    """
+    try:
+        return pipeline.forge_demo(run_id, "", forged_bps)
+    except SystemExit as exc:
+        for root in (config.EVIDENCE_ROOT, config.DEMO_EVIDENCE_ROOT):
+            written = root / run_id / "forge_demo.json"
+            if written.exists():
+                return read_json(written)
+        raise HTTPException(400, str(exc.code)) from exc
 
 
 @app.get("/api/runs/{run_id}/files/{name:path}")
