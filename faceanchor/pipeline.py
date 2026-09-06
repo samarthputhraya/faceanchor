@@ -24,7 +24,7 @@ from .face import fingerprint
 from .face.engine import cosine, crop, get_engine, largest, load_image, save_jpeg
 from .search import candidates as cand_mod
 from .search import fallbacks, serpapi
-from .search.base import canonical_url
+from .search.base import canonical_url, platform_of
 from .zk import prover as zk_prover
 
 Emit = Callable[[StageEvent], None]
@@ -133,9 +133,14 @@ def scan(image_path: str | Path, engine_name: str = "", run_id: str = "",
 
 # --- stage 2: search ---------------------------------------------------------------
 
+# Above this many social posts from visual_matches, a second exact_matches
+# search costs a minute or more and has nothing left to add.
+EXACT_MATCHES_SKIP_ABOVE = 12
+
+
 def search(run_id: str = "", engines: str = "lens", image_url: str = "",
            use_cache: bool = True, max_candidates: int = cand_mod.DEFAULT_MAX_SCORED,
-           emit: Emit = _noop) -> dict:
+           force_exact: bool = False, emit: Emit = _noop) -> dict:
     d = config.resolve_run(run_id, needs="face.json")
     face_json = read_json(d / "face.json")
     engine = get_engine(face_json.get("engine", "").split("/")[0] or config.FACE_ENGINE)
@@ -164,6 +169,20 @@ def search(run_id: str = "", engines: str = "lens", image_url: str = "",
             except Exception as exc:  # noqa: BLE001
                 errors.append(f"serpapi upload: {exc}")
         for kind in ("visual_matches", "exact_matches"):
+            # exact_matches is a second billable search that takes as long as
+            # the first. When visual_matches has already produced plenty of
+            # social candidates it adds nothing but minutes -- Google Lens
+            # frequently answers "no results" for it -- so it is only asked
+            # when the first pass came back thin.
+            if kind == "exact_matches" and not force_exact:
+                social_so_far = sum(
+                    1 for hits in hit_lists for h in hits if platform_of(h.link))
+                if social_so_far >= EXACT_MATCHES_SKIP_ABOVE:
+                    emit(StageEvent("log", "search",
+                                    f"skipping exact_matches: visual_matches already "
+                                    f"returned {social_so_far} social posts "
+                                    f"(--exact to force it)"))
+                    continue
             try:
                 rs = serpapi.google_lens(image_url=image_url, image_id=image_id, kind=kind,
                                         cache_key=cache_key, use_cache=use_cache)
@@ -915,6 +934,11 @@ def verify(run_id: str = "", chain: str = "", tamper_field: str = "",
     name = "verify_log.json" if not tamper_field else f"verify_tampered_{tamper_field}.json"
     write_json(d / name, report)
     emit(StageEvent("verified" if ok else "error", "verify", report["verdict"], report))
+    # Every other stage closes with stage_end, and the dashboard's stepper
+    # counts those to decide how far the run got. Without this one the final
+    # step never lit up, so a finished run looked stuck on ANCHOR forever.
+    emit(StageEvent("stage_end", "verify",
+                    f"{report['verdict']} against {contract} on {chain}", report))
     return report
 
 

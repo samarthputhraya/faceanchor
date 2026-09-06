@@ -190,10 +190,13 @@ def search(run: str = typer.Option("", "--run"),
            no_cache: bool = typer.Option(False, "--no-cache", help="ignore the on-disk cache"),
            max_candidates: int = typer.Option(40, "--max-candidates",
                                               help="how many social results to face-check"),
+           exact: bool = typer.Option(False, "--exact",
+                                      help="also run exact_matches (a second, slower search)"),
            json_out: bool = typer.Option(False, "--json")):
     """Search the open web for this face and score every candidate."""
     out = pipeline.search(run, engines, image_url, use_cache=not no_cache,
-                          max_candidates=max_candidates, emit=make_emitter(json_out))
+                          max_candidates=max_candidates, force_exact=exact,
+                          emit=make_emitter(json_out))
     if not json_out:
         console.print(candidate_table(config.resolve_run(run) / "candidates.json"))
         console.print()
@@ -424,6 +427,8 @@ def run(image: str = typer.Option(..., "--image", "-i"),
         no_cache: bool = typer.Option(False, "--no-cache"),
         no_proof: bool = typer.Option(False, "--no-proof",
                                       help="skip the zero-knowledge proof stage"),
+        exact: bool = typer.Option(False, "--exact",
+                                   help="also run exact_matches (a second, slower search)"),
         registry: str = typer.Option("", "--registry",
                                      help="v1 or v2; defaults to v2 when a proof exists")):
     """Run every stage: scan, search, extract, prove, anchor, verify."""
@@ -431,7 +436,7 @@ def run(image: str = typer.Option(..., "--image", "-i"),
     face = pipeline.scan(image, engine, "", emit=emit)
     rid = face["run_id"]
     pipeline.search(rid, engines, image_url, use_cache=not no_cache,
-                    max_candidates=max_candidates, emit=emit)
+                    max_candidates=max_candidates, force_exact=exact, emit=emit)
     console.print(candidate_table(config.resolve_run(rid) / "candidates.json"))
     console.print()
     pipeline.extract(rid, use_browser=not no_browser, emit=emit)

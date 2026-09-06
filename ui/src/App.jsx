@@ -67,7 +67,12 @@ export default function App() {
   }, [events])
 
   const currentStep = useMemo(() => {
-    const seen = events.filter((e) => e.kind === 'stage_end').map((e) => e.stage)
+    // Count only the stages that are actually in the stepper. `forge` and
+    // `replicate` also emit stage_end, and counting those would push the bar
+    // past the end of the run they belong to.
+    const seen = events
+      .filter((e) => e.kind === 'stage_end' && STEPS.includes(e.stage))
+      .map((e) => e.stage)
     return Math.min(STEPS.length, new Set(seen).size)
   }, [events])
 

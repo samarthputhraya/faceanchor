@@ -13,6 +13,7 @@ from pathlib import Path
 
 import numpy as np
 import requests
+from concurrent.futures import ThreadPoolExecutor, as_completed
 
 from .. import config
 from ..canonical import sha256_bytes
@@ -96,6 +97,9 @@ def verdict_for(similarity: float, engine) -> str:
 
 
 DEFAULT_MAX_SCORED = 40
+# Thumbnails come from many different CDNs, so the limit is those hosts,
+# not us. Eight keeps every fetch well inside its own timeout.
+FETCH_WORKERS = 8
 
 
 def score_candidates(candidates: list[Candidate], query_embedding: np.ndarray, engine,
@@ -122,15 +126,37 @@ def score_candidates(candidates: list[Candidate], query_embedding: np.ndarray, e
         c.verdict, c.note = SKIPPED, f"beyond the --max-candidates limit of {limit}"
     scored = candidates[:limit] if limit else candidates
     total = len(scored)
+
+    # Thumbnails are fetched concurrently and scored in order afterwards.
+    # Downloading forty images one at a time was roughly a third of the stage
+    # for no reason: the fetches are independent and network-bound. Detection
+    # stays sequential and single-threaded, so results and their order are
+    # identical to the serial version -- only the waiting overlaps.
+    def _fetch(url: str) -> tuple[bytes | None, str]:
+        try:
+            r = requests.get(url, headers=headers, timeout=timeout)
+            r.raise_for_status()
+            return r.content, ""
+        except Exception as exc:  # noqa: BLE001 - a dead thumbnail must not stop the run
+            return None, f"{type(exc).__name__}: {exc}"[:160]
+
+    fetched: dict[int, tuple[bytes | None, str]] = {}
+    wanted = [(i, c) for i, c in enumerate(scored) if c.thumbnail_url]
+    if wanted:
+        with ThreadPoolExecutor(max_workers=min(FETCH_WORKERS, len(wanted))) as pool:
+            futures = {pool.submit(_fetch, c.thumbnail_url): i for i, c in wanted}
+            for fut in as_completed(futures):
+                fetched[futures[fut]] = fut.result()
+
     for i, c in enumerate(scored, 1):
         c.progress = f"{i}/{total}"
         if not c.thumbnail_url:
             c.verdict, c.note = FETCH_FAIL, "no thumbnail url in search response"
         else:
-            try:
-                r = requests.get(c.thumbnail_url, headers=headers, timeout=timeout)
-                r.raise_for_status()
-                data = r.content
+            data, err = fetched.get(i - 1, (None, "not fetched"))
+            if data is None:
+                c.verdict, c.note = FETCH_FAIL, err
+            else:
                 c.thumbnail_sha256 = sha256_bytes(data)
                 img = decode_image(data)
                 if img is None:
@@ -148,8 +174,6 @@ def score_candidates(candidates: list[Candidate], query_embedding: np.ndarray, e
                                 if f.embedding is not None]
                         c.similarity = max(sims) if sims else -1.0
                         c.verdict = verdict_for(c.similarity, engine)
-            except Exception as exc:  # noqa: BLE001 - a dead thumbnail must not stop the run
-                c.verdict, c.note = FETCH_FAIL, f"{type(exc).__name__}: {exc}"[:160]
         if emit:
             emit(c)
 
