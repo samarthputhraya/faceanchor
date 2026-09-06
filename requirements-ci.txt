@@ -1,4 +1,9 @@
 # Subset used by CI: hashing, chain and search logic. No face models, no keys.
+#
+# rich and typer are here because tests/test_output_encoding.py renders through
+# Rich and shells out to `python -m faceanchor --help`. They are pure Python, so
+# they cost CI nothing, and without them that suite fails on import -- which is
+# what had CI red while the README advertised a passing badge.
 numpy>=2,<3
 pillow==12.3.0
 imagehash==4.3.2
@@ -10,3 +15,10 @@ py-evm==0.12.1b1
 py-solc-x==2.0.5
 python-dotenv==1.2.3
 pytest
+rich
+typer
+# faceanchor.face.engine imports cv2 at module level, so `python -m faceanchor`
+# -- which test_output_encoding.py shells out to -- cannot start without it.
+# Pinned: unpinned resolves to OpenCV 5. insightface and onnxruntime stay out,
+# because they are imported lazily and CI never loads a model.
+opencv-python==4.14.0.94

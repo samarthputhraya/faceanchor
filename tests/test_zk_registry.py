@@ -54,6 +54,24 @@ def _proved_run():
     return None
 
 
+def _can_prove():
+    """A proved run is not enough: reading one back needs snarkjs too.
+
+    The demo bundle carries a proof, so gating only on `_proved_run()` made
+    these run in CI, where Node is installed but zk/node_modules is not -- they
+    failed on a missing snarkjs rather than skipping.
+    """
+    if _proved_run() is None:
+        return False
+    from faceanchor.zk import prover
+
+    return prover.available()[0]
+
+
+_NEEDS_TOOLCHAIN = pytest.mark.skipif(
+    not _can_prove(), reason="needs a proved run and the zk toolchain (zk/build.ps1)")
+
+
 def test_verifier_and_registry_compile_and_deploy(registry):
     _, verifier, reg = registry
     assert Web3.is_address(verifier.address)
@@ -105,7 +123,7 @@ def test_anchor_without_a_valid_proof_is_refused(registry):
     assert reg.functions.count().call() == 0
 
 
-@pytest.mark.skipif(_proved_run() is None, reason="no proved run on this machine")
+@_NEEDS_TOOLCHAIN
 def test_real_proof_is_accepted_and_a_forged_similarity_is_not(registry):
     """The claim that carries the whole project: the chain accepts the proven
     similarity and refuses anything above it, down to one basis point."""
@@ -142,7 +160,7 @@ def test_real_proof_is_accepted_and_a_forged_similarity_is_not(registry):
             reg.functions.anchor(claim("22", bad), proof).call({"from": w3.eth.accounts[0]})
 
 
-@pytest.mark.skipif(_proved_run() is None, reason="no proved run on this machine")
+@_NEEDS_TOOLCHAIN
 def test_tampering_a_public_signal_invalidates_the_proof(registry):
     _, verifier, _ = registry
     from faceanchor.zk import prover
@@ -154,7 +172,7 @@ def test_tampering_a_public_signal_invalidates_the_proof(registry):
         assert verifier.functions.verifyProof(cd["a"], cd["b"], cd["c"], bad).call() is False
 
 
-@pytest.mark.skipif(_proved_run() is None, reason="no proved run on this machine")
+@pytest.mark.skipif(_proved_run() is None, reason="no proved run available")
 def test_the_proof_matches_the_commitments_the_pipeline_published(registry):
     """A proof about two vectors nobody committed to would prove nothing."""
     d = _proved_run()
