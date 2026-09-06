@@ -27,6 +27,7 @@ from pathlib import Path
 ROOT = Path(__file__).resolve().parent
 DEPLOYMENTS = ROOT / "deployments"
 ARTIFACT = ROOT / "contracts" / "build" / "FaceAnchorRegistry.json"
+ARTIFACT_V2 = ROOT / "contracts" / "build" / "FaceAnchorRegistryV2.json"
 
 EXIT_OK, EXIT_MISMATCH, EXIT_CHAIN = 0, 2, 4
 
@@ -113,7 +114,15 @@ def main() -> int:
     chain = args.chain or (record.get("chain_intent") or {}).get("chain") or "base-sepolia"
     contract = args.contract or (record.get("chain_intent") or {}).get("contract", "")
     deploy_block = 0
-    dep_file = DEPLOYMENTS / f"{chain}.json"
+    # A v2 record was anchored to a contract deployed much later than v1, and
+    # scanning for its event from v1's deploy block is a ~26k block range that
+    # public RPCs refuse outright.
+    reg = (record.get("chain_intent") or {}).get("registry") or (
+        "v2" if record.get("zk") else "v1")
+    suffix = "" if reg == "v1" else f"-{reg}"
+    dep_file = DEPLOYMENTS / f"{chain}{suffix}.json"
+    if not dep_file.exists():
+        dep_file = DEPLOYMENTS / f"{chain}.json"
     if dep_file.exists():
         dep = json.loads(dep_file.read_text(encoding="utf-8"))
         contract = contract or dep.get("contract", "")
@@ -189,7 +198,18 @@ def main() -> int:
         print(f"  {RED}could not reach any RPC for {chain}{OFF}")
         return EXIT_CHAIN
 
-    abi = json.loads(ARTIFACT.read_text(encoding="utf-8"))["abi"]
+    # The two registries share verify() and the Anchored topic but differ in
+    # get(): v2's Record carries the proven integers, so decoding a v2 record
+    # through the v1 ABI dies with an opaque InvalidPointer. Pick by what the
+    # record says it was anchored to, and fall back to v1 for older bundles.
+    registry = (record.get("chain_intent") or {}).get("registry") or (
+        "v2" if record.get("zk") else "v1")
+    artifact = ARTIFACT_V2 if registry == "v2" else ARTIFACT
+    if not artifact.exists():
+        print(f"  {RED}missing {artifact.name}; run: python -m faceanchor deploy --help{OFF}")
+        return EXIT_CHAIN
+    abi = json.loads(artifact.read_text(encoding="utf-8"))["abi"]
+    print(f"  {DIM}registry {registry}  ({artifact.name}){OFF}")
     c = w3.eth.contract(address=Web3.to_checksum_address(contract), abi=abi)
     b32 = lambda h: bytes.fromhex(h.removeprefix("0x"))  # noqa: E731
 
@@ -207,19 +227,49 @@ def main() -> int:
                              ("chain: post image", post_image_ok)):
             checks.append(row(label, value))
         stored = c.functions.get(b32(local_hash)).call()
-        print(f"  {DIM}anchored at block time {stored[6]} by {stored[7]}{OFF}")
-        print(f"  {DIM}evidence uri {stored[8]}{OFF}")
+        # Index by the ABI's own field order rather than a literal, because v2
+        # inserts the proven integers ahead of evidenceUri.
+        fields = [o["name"] for o in next(
+            e for e in abi if e.get("name") == "get")["outputs"][0]["components"]]
+        rec = dict(zip(fields, stored))
+        print(f"  {DIM}anchored at block time {rec['anchoredAt']} by {rec['submitter']}{OFF}")
+        print(f"  {DIM}evidence uri {rec['evidenceUri']}{OFF}")
+        if registry == "v2":
+            print(f"  {DIM}proven on-chain: similarity {rec['similarityBps']} bps  "
+                  f"dot {rec['dot']}  normA {rec['normA']}  normB {rec['normB']}{OFF}")
+        # Public RPCs reject eth_getLogs over roughly 10k blocks, and a record
+        # can sit far above its deploy block, so walk backwards in windows from
+        # the head rather than asking for the whole range at once.
+        SPAN = 9000
+        logs, err = [], None
         try:
-            logs = c.events.Anchored().get_logs(
-                from_block=deploy_block, argument_filters={"recordHash": b32(local_hash)})
-            checks.append(row("event log carries the same hash", bool(logs)))
-            if logs:
-                tx = Web3.to_hex(logs[-1]["transactionHash"])
-                print(f"  {DIM}tx {tx}{OFF}")
-                if chain in EXPLORERS:
-                    print(f"  {EXPLORERS[chain]}{tx}")
+            head = w3.eth.block_number
+            low = max(0, deploy_block)
+            hi = head
+            while hi >= low and not logs:
+                lo = max(low, hi - SPAN)
+                try:
+                    logs = c.events.Anchored().get_logs(
+                        from_block=lo, to_block=hi,
+                        argument_filters={"recordHash": b32(local_hash)})
+                except Exception as exc:  # noqa: BLE001 - one bad window is survivable
+                    err = exc
+                if lo == low:
+                    break
+                hi = lo - 1
         except Exception as exc:  # noqa: BLE001
-            print(f"  {DIM}SKIP  event lookup unavailable on this RPC ({type(exc).__name__}){OFF}")
+            err = exc
+        if logs:
+            checks.append(row("event log carries the same hash", True))
+            tx = Web3.to_hex(logs[-1]["transactionHash"])
+            print(f"  {DIM}tx {tx}{OFF}")
+            if chain in EXPLORERS:
+                print(f"  {EXPLORERS[chain]}{tx}")
+        elif err is not None:
+            print(f"  {DIM}SKIP  event lookup unavailable on this RPC "
+                  f"({type(err).__name__}){OFF}")
+        else:
+            checks.append(row("event log carries the same hash", False))
 
     passed = all(checks) and ok
     print()
