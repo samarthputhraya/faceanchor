@@ -188,6 +188,8 @@ export default function App() {
   const post = state.post
   const face = state.face
   const zk = state.zk
+  const [replication, setReplication] = useState(null)
+  const [replicating, setReplicating] = useState(false)
 
   return (
     <div className="mx-auto max-w-[1240px] px-6 py-8">
@@ -429,6 +431,60 @@ export default function App() {
                   <span className="text-warn">Does not prove</span> those embeddings came from running the
                   face model on the two images &mdash; that would need the model itself inside the circuit.
                 </p>
+              </SpotlightCard>
+            </Section>
+          )}
+
+          {zk && (
+            <Section title="4b  re-derive it yourself">
+              <SpotlightCard className="p-4" glow="167, 139, 250">
+                <p className="text-[12px] leading-relaxed text-mute">
+                  The post image is public, so its salt is published too. Anyone can run the
+                  same model over it and reproduce the committed vector &mdash; no secret, no
+                  proving key, no trust in us.
+                </p>
+                <button
+                  type="button"
+                  disabled={replicating}
+                  onClick={async () => {
+                    setReplicating(true)
+                    try {
+                      const body = new FormData()
+                      body.append('live', 'false')
+                      const r = await fetch(`/api/runs/${runId}/replicate`, { method: 'POST', body })
+                      setReplication(await r.json())
+                    } catch {
+                      setReplication({ verdict: 'ERROR', checks: [] })
+                    } finally {
+                      setReplicating(false)
+                    }
+                  }}
+                  className="mt-3 rounded-md border border-edge px-3 py-1.5 text-[12px]
+                             hover:border-accent disabled:opacity-50"
+                >
+                  {replicating ? 're-deriving...' : 're-derive the post face'}
+                </button>
+                {replication && (
+                  <div className="mt-3 space-y-1">
+                    {(replication.checks || []).map((c) => (
+                      <Row
+                        key={c.check}
+                        label={c.check}
+                        mono={false}
+                        value={
+                          <span className={
+                            c.state === 'PASS' ? 'text-good'
+                              : c.state === 'FAIL' ? 'text-bad' : 'text-mute'
+                          }>{c.state}</span>
+                        }
+                      />
+                    ))}
+                    <p className={`mt-2 text-[12px] ${
+                      replication.verdict === 'REPLICATED' ? 'text-good' : 'text-bad'}`}>
+                      {replication.verdict}
+                    </p>
+                  </div>
+                )}
               </SpotlightCard>
             </Section>
           )}

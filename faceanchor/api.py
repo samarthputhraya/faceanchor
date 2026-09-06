@@ -136,11 +136,28 @@ async def run_state(run_id: str):
     d = config.EVIDENCE_ROOT / run_id
     out: dict = {"run_id": run_id, "done": RUNS.get(run_id, {}).get("done", not d.exists())}
     for name, key in (("face.json", "face"), ("candidates.json", "candidates"),
-                      ("post.json", "post"), ("zk.json", "zk"), ("anchor.json", "anchor"),
+                      ("post.json", "post"), ("zk.json", "zk"), ("replicate.json", "replicate"),
+                      ("anchor.json", "anchor"),
                       ("verify_log.json", "verify")):
         if (d / name).exists():
             out[key] = read_json(d / name)
     return out
+
+
+@app.post("/api/runs/{run_id}/replicate")
+async def replicate_run(run_id: str, live: bool = Form(False)):
+    """Re-derive the post-side face from published data only.
+
+    Defaults to offline: the live re-fetch can take tens of seconds behind a
+    filtering network, and the three offline checks are the ones that carry the
+    argument.
+    """
+    from . import replicate as replicate_mod
+
+    try:
+        return replicate_mod.replicate(run_id, live=live)
+    except SystemExit as exc:
+        raise HTTPException(status_code=400, detail=str(exc.code)) from exc
 
 
 @app.get("/api/runs/{run_id}/files/{name:path}")
