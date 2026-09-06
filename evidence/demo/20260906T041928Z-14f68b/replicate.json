@@ -1,0 +1,48 @@
+{
+  "checks": [
+    {
+      "check": "model identity",
+      "expected": "det_10g.onnx=5838f7fe05, w600k_r50.onnx=4c06341c33",
+      "found": "det_10g.onnx=5838f7fe05, w600k_r50.onnx=4c06341c33",
+      "note": "the embedding is only reproducible under these exact weights",
+      "state": "PASS"
+    },
+    {
+      "check": "published image sha256",
+      "expected": "48d4ef77a43474f769961124369fc5df47dc5334523dfe4145d0b1f39b7c54ec",
+      "found": "48d4ef77a43474f769961124369fc5df47dc5334523dfe4145d0b1f39b7c54ec",
+      "note": "the bytes in the bundle are the bytes that were scored",
+      "state": "PASS"
+    },
+    {
+      "check": "re-derived commitment",
+      "expected": "99376768425917295059103029118894504175755680...",
+      "found": "99376768425917295059103029118894504175755680...",
+      "note": "this image, under this model and the published salt, produces the committed vector",
+      "state": "PASS"
+    },
+    {
+      "check": "re-derived embedding",
+      "expected": "> 0.9900",
+      "found": "1.0000",
+      "note": "fresh embedding against the one the pipeline stored",
+      "state": "PASS"
+    },
+    {
+      "check": "live post image",
+      "expected": "bef904e1c596e10b  <= 10",
+      "found": "bef904e1c596e10b  hamming 0",
+      "note": "the image at the post URL is still the picture in the bundle",
+      "state": "PASS"
+    }
+  ],
+  "does_not_mean": "that the scanned face matches its own input image. That image is private by design, so binding it needs the disclosed secret: verify --biometric",
+  "exit_code": 0,
+  "failed": 0,
+  "means": "the face in the published post image is the one the record committed to, re-derived here from published data alone",
+  "passed": 5,
+  "post_url": "https://x.com/VanEmmerickKris/status/2094782729346859238",
+  "run_id": "20260906T041928Z-14f68b",
+  "skipped": 0,
+  "verdict": "REPLICATED"
+}

@@ -1,0 +1,14 @@
+{
+  "note": "Sanitised copy of a real run. The biometric material behind the on-chain commitments is withheld on purpose and never leaves the operator's machine.",
+  "published_proof": "zk_proof.json and zk_public.json ARE included: they are what a third party needs to check the proof, and they reveal nothing about either embedding.",
+  "verify": "python verify.py --record evidence/demo/20260906T041928Z-14f68b/record.json",
+  "verify_proof": "node zk/node_modules/snarkjs/build/cli.cjs groth16 verify zk/verification_key.json evidence/demo/20260906T041928Z-14f68b/zk_public.json evidence/demo/20260906T041928Z-14f68b/zk_proof.json",
+  "withheld": [
+    "face_secret.json",
+    "embedding.npy",
+    "post_embedding.npy",
+    "zk_secret.json",
+    "zk_input.json",
+    "zk_witness.wtns"
+  ]
+}

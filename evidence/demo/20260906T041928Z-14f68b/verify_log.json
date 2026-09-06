@@ -1,0 +1,81 @@
+{
+  "chain": "base-sepolia",
+  "chain_id": 84532,
+  "contract": "0x3827D54282047caDA437D7AeBB33e05D617Ca1b9",
+  "event": {
+    "anchoredAt": 1788668486,
+    "block_number": 46450099,
+    "evidenceUri": "sha256:a3236c8c70332cffcd22d4135789daaca4c941596aedee241d2e1d752d8b7303",
+    "faceCommitment": "e46597664c73222a63ca1feefdbaa6ab03ca6cc75e6fa68d66e640e74df60efd",
+    "inputImageSha256": "3fed0e001ab7011c085d2ffa93e5f2029b402d09f8745158bfab9d59e33495a8",
+    "inputPHash": 13740771513392090316,
+    "postImageSha256": "48d4ef77a43474f769961124369fc5df47dc5334523dfe4145d0b1f39b7c54ec",
+    "postUrlHash": "f81fc287e2fa87f820c3c49c676bc7c07a743d861ba620837fee5f936fd9ad5b",
+    "recordHash": "a3236c8c70332cffcd22d4135789daaca4c941596aedee241d2e1d752d8b7303",
+    "similarityBps": 9916,
+    "submitter": "0xc2557fB29fa3D88e90B6E37B8c64123c9fB6b854",
+    "tx_hash": "0x38fda4f18f247cb71286dcbb3fc33d29c4d58b636d740a349532e873f65b1e53",
+    "zkCommitmentA": 4981996638153362370439120205886198658232752019534401950841362513881695259950,
+    "zkCommitmentB": 9937676842591729505910302911889450417575568055841136818959144859990502203565
+  },
+  "event_found": true,
+  "exit_code": 0,
+  "explorer_tx": "https://sepolia.basescan.org/tx/0x38fda4f18f247cb71286dcbb3fc33d29c4d58b636d740a349532e873f65b1e53",
+  "local_checks": [
+    {
+      "field": "input image sha256",
+      "in_record": "3fed0e001ab7011c085d2ffa93e5f2029b402d09f8745158bfab9d59e33495a8",
+      "ok": true,
+      "recomputed": "3fed0e001ab7011c085d2ffa93e5f2029b402d09f8745158bfab9d59e33495a8"
+    },
+    {
+      "field": "input pHash",
+      "in_record": "beb106e3c38acccc",
+      "ok": true,
+      "recomputed": "beb106e3c38acccc"
+    },
+    {
+      "field": "post image sha256",
+      "in_record": "48d4ef77a43474f769961124369fc5df47dc5334523dfe4145d0b1f39b7c54ec",
+      "ok": true,
+      "recomputed": "48d4ef77a43474f769961124369fc5df47dc5334523dfe4145d0b1f39b7c54ec"
+    },
+    {
+      "field": "face commitment",
+      "in_record": "e46597664c73222a63ca1feefdbaa6ab03ca6cc75e6fa68d66e640e74df60efd",
+      "ok": true,
+      "recomputed": "e46597664c73222a63ca1feefdbaa6ab03ca6cc75e6fa68d66e640e74df60efd"
+    },
+    {
+      "field": "record hash (sha256 of canonical record.json)",
+      "in_record": "a3236c8c70332cffcd22d4135789daaca4c941596aedee241d2e1d752d8b7303",
+      "ok": true,
+      "recomputed": "a3236c8c70332cffcd22d4135789daaca4c941596aedee241d2e1d752d8b7303"
+    }
+  ],
+  "onchain": {
+    "face_ok": true,
+    "found": true,
+    "image_ok": true,
+    "ok": true,
+    "post_image_ok": true,
+    "post_ok": true
+  },
+  "onchain_record": {
+    "anchoredAt": 1788668486,
+    "evidenceUri": 4981996638153362370439120205886198658232752019534401950841362513881695259950,
+    "faceCommitment": "e46597664c73222a63ca1feefdbaa6ab03ca6cc75e6fa68d66e640e74df60efd",
+    "inputImageSha256": "3fed0e001ab7011c085d2ffa93e5f2029b402d09f8745158bfab9d59e33495a8",
+    "inputPHash": 13740771513392090316,
+    "postImageSha256": "48d4ef77a43474f769961124369fc5df47dc5334523dfe4145d0b1f39b7c54ec",
+    "postUrlHash": "f81fc287e2fa87f820c3c49c676bc7c07a743d861ba620837fee5f936fd9ad5b",
+    "similarityBps": 9916,
+    "submitter": "0xc2557fB29fa3D88e90B6E37B8c64123c9fB6b854"
+  },
+  "record_hash_anchored": "a3236c8c70332cffcd22d4135789daaca4c941596aedee241d2e1d752d8b7303",
+  "record_hash_local": "a3236c8c70332cffcd22d4135789daaca4c941596aedee241d2e1d752d8b7303",
+  "run_id": "20260906T041928Z-14f68b",
+  "tampered_field": null,
+  "verdict": "VERIFIED",
+  "verified_at": "2026-09-06T04:22:05Z"
+}

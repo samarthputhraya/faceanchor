@@ -57,6 +57,7 @@ STAGE_TITLE = {
     "anchor": "5 ANCHOR  write the evidence hash on-chain",
     "verify": "6 VERIFY  recompute and re-read from the chain",
     "forge": "FORGE  try to write a similarity the proof does not support",
+    "replicate": "REPLICATE  re-derive the post face from published data alone",
 }
 
 
@@ -241,6 +242,39 @@ def prove(run: str = typer.Option("", "--run"),
                 Text("proves       " + out["proves"], style="green"),
                 Text("does not     " + out["does_not_prove"], style="yellow"),
             ), title="zero-knowledge proof", border_style="magenta"))
+
+
+@app.command()
+def replicate(run: str = typer.Option("", "--run"),
+              offline: bool = typer.Option(False, "--offline",
+                                           help="skip the live post re-fetch"),
+              json_out: bool = typer.Option(False, "--json")):
+    """Re-derive the post-side face yourself. Needs no secret and no proving key."""
+    from . import replicate as replicate_mod
+
+    out = replicate_mod.replicate(run, live=not offline, emit=make_emitter(json_out))
+    if not json_out:
+        t = Table(header_style="bold", expand=False,
+                  title="re-derived from published data only", title_style="bold")
+        t.add_column("check")
+        t.add_column("recomputed here", overflow="fold", max_width=40)
+        t.add_column("published", overflow="fold", max_width=40)
+        t.add_column("", justify="center")
+        style = {"PASS": "bold green", "FAIL": "bold red", "SKIP": "dim"}
+        for c in out["checks"]:
+            t.add_row(c["check"], str(c["found"])[:70], str(c["expected"])[:70],
+                      Text(c["state"], style=style.get(c["state"], "")))
+        console.print(t)
+        good = out["verdict"] == "REPLICATED"
+        console.print(Panel(
+            Group(
+                Text(out["verdict"], justify="center",
+                     style="bold green" if good else "bold red"),
+                Text(""),
+                Text("means:     " + out["means"], style="green"),
+                Text("does not:  " + out["does_not_mean"], style="yellow"),
+            ), border_style="green" if good else "red"))
+    raise typer.Exit(out["exit_code"])
 
 
 @app.command("forge-demo")

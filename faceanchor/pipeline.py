@@ -428,6 +428,7 @@ def extract(run_id: str = "", use_browser: bool = True, emit: Emit = _noop) -> d
     similarity = float(best["similarity"])
     similarity_source = "search_thumbnail"
     post_zk_commitment = ""
+    post_zk_salt_public = ""
     post_similarity = None
     if p.image_file:
         try:
@@ -464,6 +465,13 @@ def extract(run_id: str = "", use_browser: bool = True, emit: Emit = _noop) -> d
                     "sha256_salt_b": post_salt,
                     "engine": engine.name,
                 })
+                # salt_b is deliberately PUBLIC. Salting the scanned face keeps
+                # a private biometric unlinkable; salting the face in a public
+                # post image hides nothing -- anyone can fetch that image and
+                # compute the vector. Publishing it is what lets a third party
+                # re-derive commitment_b and check it against the chain, so it
+                # buys verifiability at no privacy cost.
+                post_zk_salt_public = post_zk_salt
                 if best_sim > similarity:
                     similarity, similarity_source = best_sim, p.image_source
             p.image_phash = phash_hex(d / p.image_file)
@@ -485,6 +493,7 @@ def extract(run_id: str = "", use_browser: bool = True, emit: Emit = _noop) -> d
         # than quietly overwriting the headline number.
         "post_image_similarity": post_similarity,
         "zk_commitment": post_zk_commitment or None,
+        "zk_salt": post_zk_salt_public or None,
     })
     write_json(d / "post.json", out)
     emit(StageEvent("stage_end", "extract",
@@ -679,6 +688,8 @@ def build_record(d: Path) -> dict:
             "extraction_method": post.get("extraction_method") or None,
             "similarity": post["similarity"],
             "similarity_source": post["similarity_source"],
+            "zk_commitment": post.get("zk_commitment") or None,
+            "zk_salt": post.get("zk_salt") or None,
         },
     }
 
