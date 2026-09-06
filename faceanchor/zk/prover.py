@@ -100,6 +100,23 @@ def commitment(quantised: list[int], salt_hex: str) -> str:
 CALLDATA_FILE = "zk_calldata.json"
 
 
+def _calldata_to_int(cd: dict) -> dict:
+    """Field elements are stored as decimal STRINGS, read back as ints.
+
+    They are 256-bit values. Written as JSON numbers they survive Python fine
+    but any JavaScript reader -- including the browser verifier -- silently
+    truncates them to float64 and corrupts the proof from about the 18th digit,
+    so the on-chain check fails on data that was never wrong. Strings are exact
+    in every language that will read this file.
+    """
+    return {
+        "a": [int(x) for x in cd["a"]],
+        "b": [[int(x) for x in row] for row in cd["b"]],
+        "c": [int(x) for x in cd["c"]],
+        "public_signals": [int(x) for x in cd["public_signals"]],
+    }
+
+
 def solidity_calldata(run_dir: Path) -> dict:
     """Proof in the shape the generated Solidity verifier expects.
 
@@ -115,7 +132,7 @@ def solidity_calldata(run_dir: Path) -> dict:
     d = Path(run_dir).resolve()
     cached = d / CALLDATA_FILE
     if cached.exists():
-        return json.loads(cached.read_text(encoding="utf-8"))
+        return _calldata_to_int(json.loads(cached.read_text(encoding="utf-8")))
 
     proof_path, public_path = d / "zk_proof.json", d / "zk_public.json"
     for p in (proof_path, public_path):
@@ -138,13 +155,13 @@ def solidity_calldata(run_dir: Path) -> dict:
     groups = json.loads("[" + p.stdout.strip() + "]")
     a, b, c, signals = groups
     out = {
-        "a": [int(x, 16) for x in a],
-        "b": [[int(x, 16) for x in row] for row in b],
-        "c": [int(x, 16) for x in c],
-        "public_signals": [int(x, 16) for x in signals],
+        "a": [str(int(x, 16)) for x in a],
+        "b": [[str(int(x, 16)) for x in row] for row in b],
+        "c": [str(int(x, 16)) for x in c],
+        "public_signals": [str(int(x, 16)) for x in signals],
     }
     cached.write_text(json.dumps(out, indent=2) + "\n", encoding="utf-8")
-    return out
+    return _calldata_to_int(out)
 
 
 def _offset_bytes(quantised: list[int]) -> list[int]:

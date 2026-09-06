@@ -1,0 +1,267 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>FaceAnchor — verify it yourself</title>
+<style>
+  :root {
+    --ink: #e8eaf0; --bg: #0b0f17; --panel: #121826; --edge: #1f2937;
+    --mute: #8b95a8; --accent: #4da3ff; --good: #38d996; --bad: #ff6b6b;
+    --warn: #f5c451;
+    --mono: ui-monospace, SFMono-Regular, "SF Mono", Menlo, Consolas, monospace;
+  }
+  * { box-sizing: border-box; }
+  body {
+    margin: 0; background: var(--bg); color: var(--ink);
+    font: 15px/1.6 ui-sans-serif, system-ui, -apple-system, "Segoe UI", sans-serif;
+  }
+  .wrap { max-width: 820px; margin: 0 auto; padding: 40px 20px 80px; }
+  h1 { font-size: 26px; margin: 0 0 6px; letter-spacing: -0.01em; }
+  .sub { color: var(--mute); margin: 0 0 28px; }
+  .lead {
+    background: var(--panel); border: 1px solid var(--edge); border-radius: 10px;
+    padding: 18px 20px; margin: 0 0 24px;
+  }
+  .lead p { margin: 0 0 10px; }
+  .lead p:last-child { margin: 0; }
+  button {
+    background: var(--accent); color: #05203d; border: 0; border-radius: 8px;
+    font: 600 15px/1 inherit; padding: 13px 22px; cursor: pointer;
+  }
+  button:disabled { opacity: .5; cursor: default; }
+  .checks { margin-top: 26px; }
+  .check {
+    display: grid; grid-template-columns: 74px 1fr; gap: 14px;
+    padding: 14px 0; border-top: 1px solid var(--edge);
+  }
+  .state { font: 600 12px/1.7 var(--mono); letter-spacing: .06em; }
+  .state.pass { color: var(--good); } .state.fail { color: var(--bad); }
+  .state.wait { color: var(--mute); } .state.warn { color: var(--warn); }
+  .what { font-weight: 600; }
+  .detail { color: var(--mute); font: 12px/1.65 var(--mono); word-break: break-all; margin-top: 3px; }
+  .note { color: var(--mute); font-size: 13px; margin-top: 4px; }
+  .verdict {
+    margin-top: 26px; padding: 18px 20px; border-radius: 10px; text-align: center;
+    border: 1px solid var(--edge); font-weight: 600;
+  }
+  .verdict.pass { border-color: var(--good); color: var(--good); }
+  .verdict.fail { border-color: var(--bad); color: var(--bad); }
+  a { color: var(--accent); }
+  code { font-family: var(--mono); font-size: .92em; }
+  footer { margin-top: 34px; color: var(--mute); font-size: 13px; border-top: 1px solid var(--edge); padding-top: 18px; }
+</style>
+</head>
+<body>
+<div class="wrap">
+
+  <h1>FaceAnchor — verify it yourself</h1>
+  <p class="sub">Nothing to install. Everything below runs in this tab.</p>
+
+  <div class="lead">
+    <p>FaceAnchor writes a face-match record to a public blockchain, and the
+    contract <strong>refuses to store one unless a zero-knowledge proof shows the
+    similarity is real</strong>. That is a strong claim, so here is the evidence
+    rather than the assertion.</p>
+    <p>This page fetches the published evidence straight from the GitHub repo,
+    verifies the Groth16 proof in your browser, and reads the record back off
+    Base Sepolia. It uses no server of ours — only
+    <a href="https://raw.githubusercontent.com/samarthputhraya/faceanchor/main/">raw.githubusercontent.com</a>
+    and a public RPC.</p>
+  </div>
+
+  <button id="run">Run all five checks</button>
+
+  <div class="checks" id="checks"></div>
+  <div id="verdict"></div>
+
+  <footer>
+    <p><strong>What this does not show.</strong> The proof binds the published
+    similarity to two committed face embeddings, and the post-side embedding to
+    the published image. It does <em>not</em> prove the scanned embedding came
+    from the scanned photograph — that needs the face model itself inside the
+    circuit, which is far beyond what any laptop can prove. The full accounting
+    is in
+    <a href="https://github.com/samarthputhraya/faceanchor/blob/main/docs/what-is-proven.md">what-is-proven.md</a>.</p>
+    <p><a href="https://github.com/samarthputhraya/faceanchor">Source</a> ·
+    <a href="https://sepolia.basescan.org/address/0x3827D54282047caDA437D7AeBB33e05D617Ca1b9">registry on BaseScan</a> ·
+    <a href="https://github.com/samarthputhraya/faceanchor/tree/main/evidence/demo/20260906T041928Z-14f68b">the evidence bundle</a></p>
+  </footer>
+</div>
+
+<script src="https://cdn.jsdelivr.net/npm/snarkjs@0.7.5/build/snarkjs.min.js"></script>
+<script>
+const REPO = "https://raw.githubusercontent.com/samarthputhraya/faceanchor/main";
+const RUN  = "evidence/demo/20260906T041928Z-14f68b";
+const REGISTRY = "0x3827D54282047caDA437D7AeBB33e05D617Ca1b9";
+const VERIFIER = "0xf1175acf6A63c23f967431F1c7feB46eC1957c22";
+
+// Several public Base Sepolia endpoints send permissive CORS headers; try them
+// in turn so one being rate-limited does not fail the page.
+const RPCS = [
+  "https://sepolia.base.org",
+  "https://base-sepolia-rpc.publicnode.com",
+  "https://base-sepolia.drpc.org",
+];
+
+// keccak256("...")[0:4] -- computed from the deployed ABI.
+const SEL_VERIFY = "0x7cd633d8"; // verify(bytes32 x5)
+const SEL_VERIFY_PROOF = "0x34baeab9"; // verifyProof(uint[2],uint[2][2],uint[2],uint[5])
+
+const el = (id) => document.getElementById(id);
+const rows = {};
+
+function addRow(key, what, note) {
+  const d = document.createElement("div");
+  d.className = "check";
+  d.innerHTML = `<div class="state wait" data-s>· · ·</div>
+    <div><div class="what"></div><div class="note"></div><div class="detail" data-d></div></div>`;
+  d.querySelector(".what").textContent = what;
+  d.querySelector(".note").textContent = note || "";
+  el("checks").appendChild(d);
+  rows[key] = d;
+}
+
+function setRow(key, state, detail) {
+  const d = rows[key];
+  const s = d.querySelector("[data-s]");
+  s.className = "state " + state;
+  s.textContent = state === "pass" ? "PASS" : state === "fail" ? "FAIL" : "SKIP";
+  if (detail) d.querySelector("[data-d]").textContent = detail;
+}
+
+const pad32 = (hex) => hex.replace(/^0x/, "").padStart(64, "0");
+const toHex = (buf) =>
+  [...new Uint8Array(buf)].map((b) => b.toString(16).padStart(2, "0")).join("");
+
+async function rpc(method, params) {
+  let lastErr;
+  for (const url of RPCS) {
+    try {
+      const r = await fetch(url, {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ jsonrpc: "2.0", id: 1, method, params }),
+      });
+      const j = await r.json();
+      if (j.error) throw new Error(j.error.message);
+      return j.result;
+    } catch (e) { lastErr = e; }
+  }
+  throw lastErr;
+}
+
+async function getText(path) {
+  const r = await fetch(`${REPO}/${path}`, { cache: "no-store" });
+  if (!r.ok) throw new Error(`${path}: HTTP ${r.status}`);
+  return r.text();
+}
+
+async function main() {
+  el("run").disabled = true;
+  el("verdict").innerHTML = "";
+  el("checks").innerHTML = "";
+  Object.keys(rows).forEach((k) => delete rows[k]);
+
+  addRow("fetch", "The published evidence is reachable",
+         "fetched from the GitHub repo, not from this page");
+  addRow("hash", "record.json hashes to the anchored record hash",
+         "sha256 of the exact published bytes");
+  addRow("proof", "The zero-knowledge proof verifies",
+         "snarkjs groth16.verify, running in this browser");
+  addRow("onchain", "The same proof is accepted by the on-chain verifier",
+         "eth_call to the deployed Groth16Verifier contract");
+  addRow("record", "The chain agrees with every field of the record",
+         "eth_call to the registry's verify()");
+
+  let rec, proof, pub, vkey, anchor, calldata;
+  try {
+    const [recTxt, proofTxt, pubTxt, vkeyTxt, anchorTxt, cdTxt] = await Promise.all([
+      getText(`${RUN}/record.json`),
+      getText(`${RUN}/zk_proof.json`),
+      getText(`${RUN}/zk_public.json`),
+      getText("zk/verification_key.json"),
+      getText(`${RUN}/anchor.json`),
+      getText(`${RUN}/zk_calldata.json`),
+    ]);
+    rec = JSON.parse(recTxt); proof = JSON.parse(proofTxt);
+    pub = JSON.parse(pubTxt); vkey = JSON.parse(vkeyTxt);
+    anchor = JSON.parse(anchorTxt); calldata = JSON.parse(cdTxt);
+
+    // Hash the bytes exactly as served. Re-serialising would risk a different
+    // encoding; the point is that the published file itself hashes correctly.
+    const bytes = new TextEncoder().encode(recTxt);
+    const digest = toHex(await crypto.subtle.digest("SHA-256", bytes));
+    setRow("fetch", "pass", `${recTxt.length} bytes of record.json + proof, public signals, verification key`);
+    setRow("hash", digest === anchor.record_hash ? "pass" : "fail",
+           `${digest}\nanchored: ${anchor.record_hash}`);
+  } catch (e) {
+    setRow("fetch", "fail", String(e));
+    finish(); return;
+  }
+
+  try {
+    const ok = await snarkjs.groth16.verify(vkey, pub, proof);
+    setRow("proof", ok ? "pass" : "fail",
+           `dot ${rec.zk.dot} · normA ${rec.zk.norm_a} · normB ${rec.zk.norm_b} ` +
+           `→ cosine ${rec.zk.similarity_bps / 10000}`);
+  } catch (e) {
+    setRow("proof", "fail", String(e));
+  }
+
+  try {
+    // verifyProof(uint[2], uint[2][2], uint[2], uint[5]) — all fixed-size, so
+    // the encoding is just the words in order after the selector.
+    const words = [
+      ...calldata.a,
+      calldata.b[0][0], calldata.b[0][1], calldata.b[1][0], calldata.b[1][1],
+      ...calldata.c,
+      ...calldata.public_signals,
+    ].map((n) => pad32(BigInt(n).toString(16)));
+    const out = await rpc("eth_call",
+      [{ to: VERIFIER, data: SEL_VERIFY_PROOF + words.join("") }, "latest"]);
+    const accepted = BigInt(out) === 1n;
+    setRow("onchain", accepted ? "pass" : "fail",
+           `${VERIFIER} → ${accepted}`);
+  } catch (e) {
+    setRow("onchain", "warn", `RPC unavailable: ${e.message}`);
+  }
+
+  try {
+    const args = [
+      anchor.record_hash, rec.input.sha256, rec.face.commitment,
+      rec.post.url_sha256, rec.post.image_sha256,
+    ].map(pad32).join("");
+    const out = await rpc("eth_call",
+      [{ to: REGISTRY, data: SEL_VERIFY + args }, "latest"]);
+    // Returns (ok, found, imageOk, faceOk, postOk, postImageOk) as six words.
+    const body = out.replace(/^0x/, "");
+    const flags = [...Array(6)].map((_, i) =>
+      BigInt("0x" + body.slice(i * 64, (i + 1) * 64)) === 1n);
+    const names = ["ok", "found", "input image", "face commitment", "post url", "post image"];
+    setRow("record", flags[0] ? "pass" : "fail",
+           names.map((n, i) => `${n}=${flags[i]}`).join("  ·  "));
+  } catch (e) {
+    setRow("record", "warn", `RPC unavailable: ${e.message}`);
+  }
+
+  finish();
+}
+
+function finish() {
+  el("run").disabled = false;
+  el("run").textContent = "Run the checks again";
+  const states = [...document.querySelectorAll("[data-s]")].map((s) => s.textContent);
+  const failed = states.filter((s) => s === "FAIL").length;
+  const passed = states.filter((s) => s === "PASS").length;
+  const v = el("verdict");
+  v.className = "verdict " + (failed ? "fail" : "pass");
+  v.textContent = failed
+    ? `${failed} check${failed > 1 ? "s" : ""} failed.`
+    : `All ${passed} checks passed — verified from published data, in your browser.`;
+}
+
+el("run").addEventListener("click", main);
+</script>
+</body>
+</html>
