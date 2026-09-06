@@ -97,18 +97,37 @@ def commitment(quantised: list[int], salt_hex: str) -> str:
     return json.loads(p.stdout)["commitment"]
 
 
+CALLDATA_FILE = "zk_calldata.json"
+
+
 def solidity_calldata(run_dir: Path) -> dict:
     """Proof in the shape the generated Solidity verifier expects.
 
-    snarkjs does this conversion rather than us: the G2 point in pi_b has its
+    The conversion is snarkjs's rather than ours: the G2 point in pi_b has its
     coordinate pairs swapped relative to the JSON, and getting that wrong
     produces a proof that verifies off-chain and fails on-chain.
+
+    It is also deterministic, so `prove` caches the result next to the proof.
+    Reading that cache means `forge-demo` -- the one command a reviewer is most
+    likely to try -- runs against the live contract with only Python installed:
+    no Node, no npm install, no proving key.
     """
     d = Path(run_dir).resolve()
+    cached = d / CALLDATA_FILE
+    if cached.exists():
+        return json.loads(cached.read_text(encoding="utf-8"))
+
     proof_path, public_path = d / "zk_proof.json", d / "zk_public.json"
     for p in (proof_path, public_path):
         if not p.exists():
             raise ZkError(f"{p.name} is missing; run `prove` first")
+
+    ok, why = available()
+    if not ok:
+        raise ZkError(
+            f"{CALLDATA_FILE} is not in this bundle and the zk toolchain is "
+            f"unavailable to regenerate it ({why})"
+        )
 
     p = _run([NODE, str(SNARKJS), "zkey", "export", "soliditycalldata",
               str(public_path), str(proof_path)], "calldata export")
@@ -118,12 +137,14 @@ def solidity_calldata(run_dir: Path) -> dict:
     # Output is four bracketed groups; wrapping them makes it valid JSON.
     groups = json.loads("[" + p.stdout.strip() + "]")
     a, b, c, signals = groups
-    return {
+    out = {
         "a": [int(x, 16) for x in a],
         "b": [[int(x, 16) for x in row] for row in b],
         "c": [int(x, 16) for x in c],
         "public_signals": [int(x, 16) for x in signals],
     }
+    cached.write_text(json.dumps(out, indent=2) + "\n", encoding="utf-8")
+    return out
 
 
 def _offset_bytes(quantised: list[int]) -> list[int]:
