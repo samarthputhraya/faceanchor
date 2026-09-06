@@ -65,6 +65,7 @@ export default function App() {
   const [forging, setForging] = useState(false)
   const [forgeError, setForgeError] = useState('')
   const videoRef = useRef(null)
+  const streamRef = useRef(null)
   const logRef = useRef(null)
 
   useEffect(() => {
@@ -95,35 +96,59 @@ export default function App() {
 
   const startCam = async () => {
     try {
-      const stream = await navigator.mediaDevices.getUserMedia({ video: { width: 1280 } })
-      if (videoRef.current) {
-        videoRef.current.srcObject = stream
-        await videoRef.current.play()
-      }
+      // Only hold the stream here. The <video> does not exist until camOn
+      // flips, so assigning srcObject now would write to a null ref: the
+      // camera stayed black and capture then drew a 0x0 canvas into a JPEG
+      // the pipeline could not decode.
+      streamRef.current = await navigator.mediaDevices.getUserMedia({ video: { width: 1280 } })
       setCamOn(true)
     } catch {
       alert('Could not open the camera. Upload a photo instead.')
     }
   }
 
+  // Attach the stream once the element it belongs to is actually on the page.
+  useEffect(() => {
+    const v = videoRef.current
+    if (!camOn || !v || !streamRef.current) return
+    v.srcObject = streamRef.current
+    v.play().catch(() => {})
+  }, [camOn])
+
+  const stopCam = useCallback(() => {
+    streamRef.current?.getTracks().forEach((t) => t.stop())
+    streamRef.current = null
+    setCamOn(false)
+  }, [])
+
+  // Leaving the page with the camera light still on is nobody's idea of a
+  // privacy-respecting tool.
+  useEffect(() => () => {
+    streamRef.current?.getTracks().forEach((t) => t.stop())
+  }, [])
+
   const capture = () => {
     const v = videoRef.current
-    if (!v) return
+    if (!v || !v.videoWidth || !v.videoHeight) {
+      alert('The camera has not sent a frame yet. Give it a second, then capture.')
+      return
+    }
     const canvas = document.createElement('canvas')
     canvas.width = v.videoWidth
     canvas.height = v.videoHeight
     canvas.getContext('2d').drawImage(v, 0, 0)
     canvas.toBlob((blob) => {
+      if (!blob) return
       const f = new File([blob], 'webcam.jpg', { type: 'image/jpeg' })
       setFile(f)
       setPreview(URL.createObjectURL(f))
-      v.srcObject?.getTracks().forEach((t) => t.stop())
-      setCamOn(false)
+      stopCam()
     }, 'image/jpeg', 0.95)
   }
 
   const pick = (f) => {
     if (!f) return
+    stopCam()
     setFile(f)
     setPreview(URL.createObjectURL(f))
   }
@@ -258,7 +283,8 @@ export default function App() {
             <SpotlightCard className="p-4">
               <div className="relative mb-3 grid aspect-[4/3] place-items-center overflow-hidden rounded-lg border border-edge bg-ink/70">
                 {camOn ? (
-                  <video ref={videoRef} className="h-full w-full object-cover" muted playsInline />
+                  <video ref={videoRef} className="h-full w-full object-cover"
+                    autoPlay muted playsInline />
                 ) : preview ? (
                   <img src={preview} alt="input" className="h-full w-full object-cover" />
                 ) : (
