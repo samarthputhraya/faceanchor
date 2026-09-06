@@ -18,6 +18,7 @@ from fastapi.responses import FileResponse, JSONResponse, StreamingResponse
 from fastapi.staticfiles import StaticFiles
 
 from . import config, pipeline
+from .search.candidates import DEFAULT_MAX_SCORED
 from .canonical import new_run_id, read_json
 from .events import StageEvent
 
@@ -46,12 +47,13 @@ def _emitter(run_id: str):
 
 
 def _run_pipeline(run_id: str, image_path: Path, chain: str, engines: str,
-                  image_url: str, use_browser: bool) -> None:
+                  image_url: str, use_browser: bool, max_candidates: int) -> None:
     emit = _emitter(run_id)
     state = RUNS[run_id]
     try:
         pipeline.scan(image_path, "", run_id, emit=emit)
-        pipeline.search(run_id, engines, image_url, emit=emit)
+        pipeline.search(run_id, engines, image_url,
+                        max_candidates=max_candidates, emit=emit)
         pipeline.extract(run_id, use_browser=use_browser, emit=emit)
         pipeline.prove(run_id, emit=emit)
         pipeline.anchor(run_id, chain, emit=emit)
@@ -71,7 +73,8 @@ def _run_pipeline(run_id: str, image_path: Path, chain: str, engines: str,
 async def start_run(image: UploadFile = File(...),
                     chain: str = Form(config.DEFAULT_CHAIN),
                     engines: str = Form("lens"), image_url: str = Form(""),
-                    use_browser: bool = Form(True)):
+                    use_browser: bool = Form(True),
+                    max_candidates: int = Form(DEFAULT_MAX_SCORED)):
     run_id = new_run_id()
     UPLOADS.mkdir(parents=True, exist_ok=True)
     dest = UPLOADS / f"{run_id}.jpg"
@@ -80,7 +83,7 @@ async def start_run(image: UploadFile = File(...),
     RUNS[run_id] = _new_state()
     threading.Thread(
         target=_run_pipeline,
-        args=(run_id, dest, chain, engines, image_url, use_browser),
+        args=(run_id, dest, chain, engines, image_url, use_browser, max_candidates),
         daemon=True,
     ).start()
     return {"run_id": run_id}

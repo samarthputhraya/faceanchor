@@ -11,6 +11,11 @@ import CountUp from './components/bits/CountUp.jsx'
 import DecryptedText from './components/bits/DecryptedText.jsx'
 
 const STEPS = ['scan', 'search', 'extract', 'prove', 'anchor', 'verify']
+// Which finished artifact proves which stage ran, for the stepper.
+const ARTIFACT_STAGE = [
+  ['face', 'scan'], ['candidates', 'search'], ['post', 'extract'],
+  ['zk', 'prove'], ['anchor', 'anchor'], ['verify', 'verify'],
+]
 const VERDICT = {
   MATCH: { color: 'text-good', ring: 'border-good/50', label: 'match' },
   WEAK: { color: 'text-warn', ring: 'border-warn/40', label: 'weak' },
@@ -47,6 +52,7 @@ export default function App() {
   const [preview, setPreview] = useState('')
   const [chain, setChain] = useState('base-sepolia')
   const [engines, setEngines] = useState('lens')
+  const [maxCandidates, setMaxCandidates] = useState('20')
   const [runId, setRunId] = useState('')
   const [events, setEvents] = useState([])
   const [candidates, setCandidates] = useState([])
@@ -73,11 +79,17 @@ export default function App() {
     // Count only the stages that are actually in the stepper. `forge` and
     // `replicate` also emit stage_end, and counting those would push the bar
     // past the end of the run they belong to.
-    const seen = events
+    const seen = new Set(events
       .filter((e) => e.kind === 'stage_end' && STEPS.includes(e.stage))
-      .map((e) => e.stage)
-    return Math.min(STEPS.length, new Set(seen).size)
-  }, [events])
+      .map((e) => e.stage))
+    // The artifacts a run wrote are the ground truth for how far it got. Going
+    // by stage_end events alone left a *finished* run pinned on ANCHOR whenever
+    // one of those events was missed, which reads as a hang rather than a
+    // dropped frame -- and cost fifteen minutes of waiting for a run that had
+    // been over for three.
+    for (const [key, stage] of ARTIFACT_STAGE) if (state[key]) seen.add(stage)
+    return Math.min(STEPS.length, seen.size)
+  }, [events, state])
 
   // --- webcam ---------------------------------------------------------------
 
@@ -133,6 +145,7 @@ export default function App() {
     body.append('image', file)
     body.append('chain', chain)
     body.append('engines', engines)
+    body.append('max_candidates', maxCandidates)
 
     const res = await fetch('/api/runs', { method: 'POST', body })
     const { run_id } = await res.json()
@@ -184,7 +197,7 @@ export default function App() {
         }, 1200)
       }
     }
-  }, [file, chain, engines, running])
+  }, [file, chain, engines, maxCandidates, running])
 
   const tamper = async (field) => {
     const body = new FormData()
@@ -295,7 +308,22 @@ export default function App() {
                     <option value="lens,bing,yandex">Lens + Bing + Yandex</option>
                   </select>
                 </label>
+                <label className="text-mute">
+                  candidates scored
+                  <select value={maxCandidates} onChange={(e) => setMaxCandidates(e.target.value)}
+                    className="mt-1 w-full rounded-md border border-edge bg-ink px-2 py-1.5 text-sm text-white">
+                    <option value="12">12 — fastest</option>
+                    <option value="20">20</option>
+                    <option value="40">40 — most thorough</option>
+                  </select>
+                </label>
               </div>
+              <p className="mt-1.5 text-[10px] leading-relaxed text-mute">
+                Every candidate costs a download and a face detection, so this is
+                what a run's length is made of. Anything past the cap still
+                appears, marked skipped — a truncated list must not read as full
+                coverage.
+              </p>
 
               <button onClick={start} disabled={!file || running}
                 className="mt-4 flex w-full items-center justify-center gap-2 rounded-lg bg-accent px-4 py-2.5 font-medium text-ink disabled:cursor-not-allowed disabled:opacity-40">
