@@ -277,6 +277,7 @@ The proof in that bundle can be checked without the repo's proving key or any
 of the biometric material:
 
 ```bash
+cd zk && npm install && cd ..    # once: zk/node_modules is not committed
 node zk/node_modules/snarkjs/build/cli.cjs groth16 verify   zk/verification_key.json   evidence/demo/20260905T183504Z-f964ca/zk_public.json   evidence/demo/20260905T183504Z-f964ca/zk_proof.json
 ```
 

@@ -107,10 +107,22 @@ def run_dir(run_id: str, demo: bool = False) -> Path:
 
 
 def latest_run() -> str | None:
-    if not EVIDENCE_ROOT.exists():
-        return None
-    runs = sorted((p.name for p in EVIDENCE_ROOT.iterdir() if p.is_dir()), reverse=True)
-    return runs[0] if runs else None
+    """The newest local run, falling back to the newest published bundle.
+
+    evidence/runs/ is gitignored, so on a fresh clone it is empty or absent and
+    every command that defaults to "the latest run" used to die with "no runs
+    found" -- including the two the README leads with. evidence/demo/ is what
+    actually ships, so it is the correct fallback: a reader who clones the repo
+    can run the documented commands with no arguments and no prior run.
+    """
+    for root in (EVIDENCE_ROOT, DEMO_EVIDENCE_ROOT):
+        if not root.exists():
+            continue
+        runs = sorted((p.name for p in root.iterdir()
+                       if p.is_dir() and (p / "record.json").exists()), reverse=True)
+        if runs:
+            return runs[0]
+    return None
 
 
 def resolve_run(run_id: str | None, needs: str = "") -> Path:

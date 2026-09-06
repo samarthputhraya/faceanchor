@@ -167,6 +167,7 @@ Verifying a published proof needs neither the proving key nor the toolchain —
 only `verification_key.json` and the two files in the evidence bundle:
 
 ```bash
+cd zk && npm install && cd ..    # once: zk/node_modules is not committed
 node zk/node_modules/snarkjs/build/cli.cjs groth16 verify \
   zk/verification_key.json \
   evidence/demo/<run_id>/zk_public.json \

@@ -21,6 +21,10 @@ from ..errors import ChainError
 from . import contract as contract_mod
 from .contract import load_artifact
 
+# eth_call needs a `from` address but never a key. The zero address is the
+# conventional placeholder and is what a read-only client sends.
+READ_ONLY_SENDER = "0x0000000000000000000000000000000000000000"
+
 RECEIPT_TIMEOUT = 90
 MAX_LOG_SPAN = 9000  # public RPCs reject eth_getLogs over ~10k blocks
 
@@ -57,14 +61,18 @@ class ChainClient:
             self.rpc_url = "in-process (eth-tester / py-evm)"
         else:
             self.w3 = self._connect()
-            if not self._key:
-                raise ChainError(
-                    "PRIVATE_KEY is not set, so nothing can be signed for "
-                    f"{self.chain.name}. Generate a burner key with: "
-                    "python -m faceanchor newkey"
-                )
-            self.account = self.w3.eth.account.from_key(self._key)
-            self.sender = self.account.address
+            if self._key:
+                self.account = self.w3.eth.account.from_key(self._key)
+                self.sender = self.account.address
+            else:
+                # Read-only, and that is a first-class mode. Every view path --
+                # exists, get, verify, find_event, dry_run_anchor -- is an
+                # eth_call: it signs nothing and needs no account. Demanding a
+                # key here meant nobody without our wallet could run forge-demo
+                # or check a published record, which is precisely the audience
+                # those commands exist for. The key is required in _send(),
+                # where it is actually used.
+                self.sender = READ_ONLY_SENDER
 
     # --- connection -------------------------------------------------------------
 
@@ -99,6 +107,14 @@ class ChainClient:
         if self.chain.is_local:
             tx_hash = fn.transact({"from": self.sender})
         else:
+            if not self._key:
+                raise ChainError(
+                    "PRIVATE_KEY is not set, so nothing can be signed for "
+                    f"{self.chain.name}. Generate a burner key with: "
+                    "python -m faceanchor newkey\n"
+                    "Reading the chain needs no key: verify, forge-demo and "
+                    "replicate all work without one."
+                )
             tx: dict[str, Any] = {
                 "from": self.sender,
                 # "pending" so a second run started before the first is mined

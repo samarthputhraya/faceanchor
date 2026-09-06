@@ -123,6 +123,7 @@ python -m faceanchor forge-demo --run <run_id>
 python -m faceanchor replicate --run <run_id>
 
 # check the proof with nothing but the published bundle
+cd zk && npm install && cd ..    # once: zk/node_modules is not committed
 node zk/node_modules/snarkjs/build/cli.cjs groth16 verify \
   zk/verification_key.json \
   evidence/demo/<run_id>/zk_public.json \

@@ -43,3 +43,11 @@ ui/.vite/
 Thumbs.db
 .DS_Store
 desktop.ini
+
+# Internal working notes, not deliverables. The build brief, the operator setup
+# checklist and the team worklist are how the project was made, not what it is.
+# They stay on disk; the code, tests, evidence and stated limitations are the
+# submission.
+MASTER_PROMPT.md
+SETUP_CHECKLIST.md
+docs/TEAM_TASKS.md
