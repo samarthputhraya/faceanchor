@@ -24,7 +24,7 @@ makes that checkable rather than asking to be believed.
   makes it fair to ask whether the comparison does anything at all:
 
   ```bash
-  python -m faceanchor control --run <kohli_run> --image demo/sundar_pichai.jpg
+  python -m faceanchor control --run 20260906T041928Z-14f68b --image demo/sundar_pichai.jpg
   ```
 
   The same 20 posts, the same thumbnails on disk, the same thresholds and the
@@ -32,7 +32,7 @@ makes that checkable rather than asking to be believed.
 
   | | scored against the scanned face | scored against a different face |
   | --- | --- | --- |
-  | posts matching | 20 of 20 | 0 of 20 |
+  | posts matching | 40 of 40 | 0 of 40 |
   | score range | 0.5645 to 0.9324 | -0.0165 to 0.1334 |
 
   It costs no search quota, because it re-uses the thumbnails already fetched.

@@ -1,0 +1,332 @@
+{
+  "checked": 40,
+  "control_face_det_score": 0.8204,
+  "control_image": "demo/virat_kohli.jpg",
+  "flipped_to_rejected": 40,
+  "originally_matched": 40,
+  "rows": [
+    {
+      "platform": "x",
+      "similarity_control": -0.0194,
+      "similarity_original": 0.98,
+      "url": "https://x.com/VanEmmerickKris/status/2094782729346859238",
+      "verdict_control": "REJECT",
+      "verdict_original": "MATCH"
+    },
+    {
+      "platform": "x",
+      "similarity_control": -0.0175,
+      "similarity_original": 0.9774,
+      "url": "https://x.com/FluxCharts/status/2081416757756010722?lang=bn",
+      "verdict_control": "REJECT",
+      "verdict_original": "MATCH"
+    },
+    {
+      "platform": "instagram",
+      "similarity_control": -0.0125,
+      "similarity_original": 0.9759,
+      "url": "https://instagram.com/reel/DcoA32IChwH",
+      "verdict_control": "REJECT",
+      "verdict_original": "MATCH"
+    },
+    {
+      "platform": "instagram",
+      "similarity_control": -0.0125,
+      "similarity_original": 0.9759,
+      "url": "https://instagram.com/reel/DVwNfJViQK-",
+      "verdict_control": "REJECT",
+      "verdict_original": "MATCH"
+    },
+    {
+      "platform": "instagram",
+      "similarity_control": -0.0125,
+      "similarity_original": 0.9759,
+      "url": "https://instagram.com/p/DVGmphjIEsC",
+      "verdict_control": "REJECT",
+      "verdict_original": "MATCH"
+    },
+    {
+      "platform": "facebook",
+      "similarity_control": -0.0201,
+      "similarity_original": 0.975,
+      "url": "https://facebook.com/MewSocial/photos/1527265486107240",
+      "verdict_control": "REJECT",
+      "verdict_original": "MATCH"
+    },
+    {
+      "platform": "facebook",
+      "similarity_control": -0.0201,
+      "similarity_original": 0.975,
+      "url": "https://facebook.com/sompukaaa/posts/28005755175712976",
+      "verdict_control": "REJECT",
+      "verdict_original": "MATCH"
+    },
+    {
+      "platform": "facebook",
+      "similarity_control": -0.0201,
+      "similarity_original": 0.975,
+      "url": "https://facebook.com/MewSocial/posts/%E0%B8%A5%E0%B9%88%E0%B8%B2%E0%B8%AA%E0%B8%B8%E0%B8%94-openai-%E0%B8%A5%E0%B8%94%E0%B8%A3%E0%B8%B2%E0%B8%84%E0%B8%B2-gpt-56-sol-%E0%B8%81%E0%B8%A7%E0%B9%88%E0%B8%B2-20-%E0%B8%AD%E0%B8%B4%E0%B8%99%E0%B8%9E%E0%B8%B8%E0%B8%95%E0%B9%80%E0%B8%AB%E0%B8%A5%E0%B8%B7%E0%B8%AD-4-%E0%B8%94%E0%B8%AD%E0%B8%A5%E0%B8%A5%E0%B8%B2%E0%B8%A3%E0%B9%8C%E0%B8%95%E0%B9%88%E0%B8%AD%E0%B8%A5%E0%B9%89%E0%B8%B2%E0%B8%99%E0%B9%82%E0%B8%97%E0%B9%80%E0%B8%84%E0%B8%99-%E0%B9%80%E0%B8%AD%E0%B8%B2%E0%B8%95%E0%B9%8C%E0%B8%9E/1527265612773894",
+      "verdict_control": "REJECT",
+      "verdict_original": "MATCH"
+    },
+    {
+      "platform": "reddit",
+      "similarity_control": -0.0107,
+      "similarity_original": 0.9697,
+      "url": "https://reddit.com/r/aiwars/comments/1utidkw/guys_even_if_you_are_an_anti_or_pro_we_can_all",
+      "verdict_control": "REJECT",
+      "verdict_original": "MATCH"
+    },
+    {
+      "platform": "threads",
+      "similarity_control": -0.0269,
+      "similarity_original": 0.9662,
+      "url": "https://threads.com/@official_chunggu/post/DbvRgVBE6dR/%ED%88%AC%EC%9E%90-%EB%AA%85%EC%96%B8-%EB%A0%88%EC%9D%B4-%EB%8B%AC%EB%A6%AC%EC%98%A4%EA%B3%A0%ED%86%B5-%EC%84%B1%EC%B0%B0-%EB%B0%9C%EC%A0%84",
+      "verdict_control": "REJECT",
+      "verdict_original": "MATCH"
+    },
+    {
+      "platform": "reddit",
+      "similarity_control": -0.0348,
+      "similarity_original": 0.9629,
+      "url": "https://reddit.com/r/ahmedabad/comments/1v8pglo/why_the_hell_is_this_even_allowed",
+      "verdict_control": "REJECT",
+      "verdict_original": "MATCH"
+    },
+    {
+      "platform": "instagram",
+      "similarity_control": -0.044,
+      "similarity_original": 0.9626,
+      "url": "https://instagram.com/p/DayHWYpCjzS",
+      "verdict_control": "REJECT",
+      "verdict_original": "MATCH"
+    },
+    {
+      "platform": "instagram",
+      "similarity_control": -0.044,
+      "similarity_original": 0.9626,
+      "url": "https://instagram.com/p/DW1sTEZkwZj",
+      "verdict_control": "REJECT",
+      "verdict_original": "MATCH"
+    },
+    {
+      "platform": "linkedin",
+      "similarity_control": -0.009,
+      "similarity_original": 0.96,
+      "url": "https://linkedin.com/posts/juniorw_sam-altman-now-runs-an-ai-company-whose-infrastructure-activity-7496295013434290176-GxnZ",
+      "verdict_control": "REJECT",
+      "verdict_original": "MATCH"
+    },
+    {
+      "platform": "facebook",
+      "similarity_control": -0.0346,
+      "similarity_original": 0.9598,
+      "url": "https://facebook.com/hypeness/photos/o-mais-recente-lan%C3%A7amento-da-openai-%C3%A9-uma-enigm%C3%A1tica-inscri%C3%A7%C3%A3o-em-rel%C3%B3gios-de-lu/1444482191206219",
+      "verdict_control": "REJECT",
+      "verdict_original": "MATCH"
+    },
+    {
+      "platform": "x",
+      "similarity_control": -0.033,
+      "similarity_original": 0.9587,
+      "url": "https://x.com/FindDualJ/status/2077243907965137365?lang=ar",
+      "verdict_control": "REJECT",
+      "verdict_original": "MATCH"
+    },
+    {
+      "platform": "facebook",
+      "similarity_control": -0.0149,
+      "similarity_original": 0.9567,
+      "url": "https://facebook.com/topradio1028fm/photos/1345133794495410",
+      "verdict_control": "REJECT",
+      "verdict_original": "MATCH"
+    },
+    {
+      "platform": "facebook",
+      "similarity_control": -0.0149,
+      "similarity_original": 0.9567,
+      "url": "https://facebook.com/topradio1028fm/posts/-ireo-orinasa-mafy-aminny-ia-atsy-ho-atsymiha-mafy-ny-fifaninanana-aminny-fahara/1345133877828735",
+      "verdict_control": "REJECT",
+      "verdict_original": "MATCH"
+    },
+    {
+      "platform": "reddit",
+      "similarity_control": -0.0232,
+      "similarity_original": 0.9546,
+      "url": "https://reddit.com/r/Kirby/comments/1vtir86/who_is_thiswrong_answers_ony",
+      "verdict_control": "REJECT",
+      "verdict_original": "MATCH"
+    },
+    {
+      "platform": "facebook",
+      "similarity_control": -0.0347,
+      "similarity_original": 0.9514,
+      "url": "https://facebook.com/61558374676703/photos/122245871000279155",
+      "verdict_control": "REJECT",
+      "verdict_original": "MATCH"
+    },
+    {
+      "platform": "youtube",
+      "similarity_control": -0.0269,
+      "similarity_original": 0.9338,
+      "url": "https://youtube.com/shorts/AT4vRQCVmXc",
+      "verdict_control": "REJECT",
+      "verdict_original": "MATCH"
+    },
+    {
+      "platform": "instagram",
+      "similarity_control": -0.0037,
+      "similarity_original": 0.8843,
+      "url": "https://instagram.com/p/DYkaTAtmW31",
+      "verdict_control": "REJECT",
+      "verdict_original": "MATCH"
+    },
+    {
+      "platform": "instagram",
+      "similarity_control": -0.0223,
+      "similarity_original": 0.8485,
+      "url": "https://instagram.com/p/DUnmPrGATla",
+      "verdict_control": "REJECT",
+      "verdict_original": "MATCH"
+    },
+    {
+      "platform": "facebook",
+      "similarity_control": -0.0327,
+      "similarity_original": 0.8253,
+      "url": "https://facebook.com/cnbc/videos/openai-ceo-sam-altman-talks-to-cnbc-about-the-government-approval-process-for-th/1025980143142809",
+      "verdict_control": "REJECT",
+      "verdict_original": "MATCH"
+    },
+    {
+      "platform": "tiktok",
+      "similarity_control": -0.0604,
+      "similarity_original": 0.8096,
+      "url": "https://tiktok.com/@abcnews/video/7628349101075139870",
+      "verdict_control": "REJECT",
+      "verdict_original": "MATCH"
+    },
+    {
+      "platform": "facebook",
+      "similarity_control": -0.0265,
+      "similarity_original": 0.8008,
+      "url": "https://facebook.com/SFChronicle/posts/openai-ceo-sam-altman-says-the-company-is-deeply-sorry-it-did-not-flag-a-school-/1594162629421808",
+      "verdict_control": "REJECT",
+      "verdict_original": "MATCH"
+    },
+    {
+      "platform": "facebook",
+      "similarity_control": -0.039,
+      "similarity_original": 0.7997,
+      "url": "https://facebook.com/groups/saynotodatacenters/posts/1524948236103343",
+      "verdict_control": "REJECT",
+      "verdict_original": "MATCH"
+    },
+    {
+      "platform": "x",
+      "similarity_control": -0.0501,
+      "similarity_original": 0.7884,
+      "url": "https://x.com/CNN/status/2061510263367401842",
+      "verdict_control": "REJECT",
+      "verdict_original": "MATCH"
+    },
+    {
+      "platform": "linkedin",
+      "similarity_control": -0.0055,
+      "similarity_original": 0.7324,
+      "url": "https://linkedin.com/in/danielle-mcgee-88170432a",
+      "verdict_control": "REJECT",
+      "verdict_original": "MATCH"
+    },
+    {
+      "platform": "instagram",
+      "similarity_control": -0.0451,
+      "similarity_original": 0.7294,
+      "url": "https://instagram.com/reel/DU7-LNqiqME",
+      "verdict_control": "REJECT",
+      "verdict_original": "MATCH"
+    },
+    {
+      "platform": "tiktok",
+      "similarity_control": -0.0302,
+      "similarity_original": 0.727,
+      "url": "https://tiktok.com/@cnbci/video/7608514833310289174",
+      "verdict_control": "REJECT",
+      "verdict_original": "MATCH"
+    },
+    {
+      "platform": "x",
+      "similarity_control": -0.0515,
+      "similarity_original": 0.7176,
+      "url": "https://x.com/flowersslop/status/2070388029487735220",
+      "verdict_control": "REJECT",
+      "verdict_original": "MATCH"
+    },
+    {
+      "platform": "facebook",
+      "similarity_control": -0.0205,
+      "similarity_original": 0.715,
+      "url": "https://facebook.com/cnbc/posts/openai-will-begin-rolling-out-gpt-6-astra-its-latest-ai-modelthe-model-is-launch/1469431155058273",
+      "verdict_control": "REJECT",
+      "verdict_original": "MATCH"
+    },
+    {
+      "platform": "youtube",
+      "similarity_control": -0.0216,
+      "similarity_original": 0.6995,
+      "url": "https://youtube.com/watch?v=RBkgTZURHHU",
+      "verdict_control": "REJECT",
+      "verdict_original": "MATCH"
+    },
+    {
+      "platform": "youtube",
+      "similarity_control": -0.0155,
+      "similarity_original": 0.6874,
+      "url": "https://youtube.com/watch?v=7VTXC_Uhdxk",
+      "verdict_control": "REJECT",
+      "verdict_original": "MATCH"
+    },
+    {
+      "platform": "linkedin",
+      "similarity_control": -0.0496,
+      "similarity_original": 0.6833,
+      "url": "https://linkedin.com/posts/angelicafwhite_how-a-fiery-attack-on-sam-altmans-home-unfolded-activity-7452464111730323456-pbmB",
+      "verdict_control": "REJECT",
+      "verdict_original": "MATCH"
+    },
+    {
+      "platform": "x",
+      "similarity_control": -0.0389,
+      "similarity_original": 0.674,
+      "url": "https://x.com/YahooNews/status/2061815111782691014",
+      "verdict_control": "REJECT",
+      "verdict_original": "MATCH"
+    },
+    {
+      "platform": "reddit",
+      "similarity_control": 0.0005,
+      "similarity_original": 0.6702,
+      "url": "https://reddit.com/r/technology/comments/1sfbius/sam_altman_says_itll_take_another_year_before",
+      "verdict_control": "REJECT",
+      "verdict_original": "MATCH"
+    },
+    {
+      "platform": "instagram",
+      "similarity_control": -0.014,
+      "similarity_original": 0.6106,
+      "url": "https://instagram.com/reel/DVAiqcbji0s",
+      "verdict_control": "REJECT",
+      "verdict_original": "MATCH"
+    },
+    {
+      "platform": "reddit",
+      "similarity_control": 0.0059,
+      "similarity_original": 0.5778,
+      "url": "https://reddit.com/r/FromSeries/comments/1u9eya0/i_just_realised_sam_altman_ceo_of_openai_and_the",
+      "verdict_control": "REJECT",
+      "verdict_original": "MATCH"
+    }
+  ],
+  "run_id": "20260906T041928Z-14f68b",
+  "still_matching": 0,
+  "threshold": 0.4
+}

@@ -124,9 +124,17 @@ def replicate(run_id: str = "", live: bool = True, emit: Emit = _noop) -> dict:
             _, _, quantised = fingerprint.commit(f.embedding)
             try:
                 c = zk_prover.commitment(quantised, salt_b)
-            except zk_prover.ZkError as exc:
-                rows.append(_row("re-derived commitment", SKIP, str(exc)[:60], "",
-                                 "the zk toolchain is not built on this machine"))
+            except zk_prover.ZkError:
+                # This one cannot be cached the way the proof calldata is: the
+                # whole point is that the verifier RECOMPUTES the commitment
+                # from the image. That needs circomlibjs, which is the only
+                # implementation guaranteed to agree with the circuit.
+                rows.append(_row(
+                    "re-derived commitment", SKIP,
+                    "needs Node: cd zk && npm install",
+                    want_commitment[:44] + "...",
+                    "one command away -- everything else here is already offline",
+                ))
                 c = ""
                 break
             got = got or c

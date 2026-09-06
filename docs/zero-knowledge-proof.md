@@ -93,7 +93,9 @@ additional commitment to the same vector, not a replacement.
 | **total (measured)** | **17,797** |
 
 `powersOfTau28_hez_final_15` covers 32,768. Proving takes about 10 seconds on
-CPU; verifying on-chain costs roughly 200–250k gas.
+CPU. The pairing check alone is roughly 200–250k gas by the EIP-1108 formula;
+the measured cost of a whole `anchor()` call, which also stores the record, is
+**617,647** ([`anchor.json`](../evidence/demo/20260906T041928Z-14f68b/anchor.json)).
 
 ## Three details that are load-bearing
 

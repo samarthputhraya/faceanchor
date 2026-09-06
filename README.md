@@ -189,7 +189,7 @@ No key is required for `--chain local`, the tests, or CI.
 | Demo record, v2 + proof | [`0xd77c00e8958b500c…`](https://sepolia.basescan.org/tx/0xd77c00e8958b500c7f10ccdaf3a33453679e4fcc5bda61764b2e352c75592bd7) |
 | Demo record, v1 | [`0xb20ba2b7ffd38b35…`](https://sepolia.basescan.org/tx/0xb20ba2b7ffd38b35f366e04799788a088b3c4728f23472442e7212418fd05f3f) |
 | Explorer | [sepolia.basescan.org](https://sepolia.basescan.org) |
-| Cost | 299,000 gas per v1 record; 634,747 for a v2 record, the extra being on-chain proof verification |
+| Cost | 617,647 gas for a proof-gated v2 record, measured — most of it the on-chain Groth16 verification ([`anchor.json`](evidence/demo/20260906T041928Z-14f68b/anchor.json)) |
 | Fallbacks | Ethereum Sepolia (11155111), or `--chain local`, an in-process py-evm chain running the identical contracts |
 
 v1 stays deployed and its record stays verifiable exactly as first published.
@@ -259,26 +259,34 @@ part of what actually happened.
 
 ### And one with a proof
 
-`evidence/demo/20260905T183504Z-f964ca/` is a second complete run, anchored to
-the proof-gated registry.
+`evidence/demo/20260906T041928Z-14f68b/` is the complete run: face scan, genuine
+search, proof, on-chain anchor, re-verification, a control run and a forgery
+attempt, all in one bundle. Every number below comes from a file inside it.
 
 | | |
 | --- | --- |
-| Best match | an x.com post, cosine 0.9939 on the full post image |
-| Proven cosine | 0.9916 &mdash; `dot` 16053, `normA` 16155, `normB` 16220 |
-| Proving time | ~10 s on CPU, 0 search quota |
-| Record hash | `f275472bf35b2f64d4f7aa9cb060f467875d3a4093e69365f665fca110428003` |
-| Transaction | [`0xd77c00e8958b500c…`](https://sepolia.basescan.org/tx/0xd77c00e8958b500c7f10ccdaf3a33453679e4fcc5bda61764b2e352c75592bd7) |
-| Gas | 634,747, including on-chain proof verification |
-| Forge attempt | 0.9999 and 0.9917 both rejected `SimilarityNotProven` |
-| Replication | 5 of 5 checks pass from published data; live post pHash distance 0 |
+| Matched post | [an x.com post](https://x.com/VanEmmerickKris/status/2094782729346859238), cosine 0.9939 on the full post image |
+| Proven cosine | 0.9916 &mdash; `dot` 16053, `normA` 16155, `normB` 16220 ([`zk.json`](evidence/demo/20260906T041928Z-14f68b/zk.json)) |
+| Record hash | `a3236c8c70332cffcd22d4135789daaca4c941596aedee241d2e1d752d8b7303` |
+| Transaction | [`0x38fda4f18f24…`](https://sepolia.basescan.org/tx/0x38fda4f18f247cb71286dcbb3fc33d29c4d58b636d740a349532e873f65b1e53) |
+| Gas | 617,647 ([`anchor.json`](evidence/demo/20260906T041928Z-14f68b/anchor.json)) |
+| Forgery attempt | 0.9999 and 0.9917 both rejected `SimilarityNotProven` ([`forge_demo.json`](evidence/demo/20260906T041928Z-14f68b/forge_demo.json)) |
+| Replication | 5 of 5 checks pass from published data; live post pHash distance 0 ([`replicate.json`](evidence/demo/20260906T041928Z-14f68b/replicate.json)) |
+| Control run | 40 of 40 matched the scanned face, 0 of 40 the control ([`control.json`](evidence/demo/20260906T041928Z-14f68b/control.json)) |
 
-The proof in that bundle can be checked without the repo's proving key or any
-of the biometric material:
+The proven 0.9916 differs from the pipeline's 0.9939 because the circuit works on
+the int8-quantised vectors while the pipeline scores in float32. Both are
+published rather than reconciled.
+
+Two earlier bundles are also committed: `…-91d69d` (the original v1 record) and
+`…-f964ca` (the first proof-gated one, 634,747 gas).
+
+The proof can be checked without the repo's proving key or any biometric
+material:
 
 ```bash
 cd zk && npm install && cd ..    # once: zk/node_modules is not committed
-node zk/node_modules/snarkjs/build/cli.cjs groth16 verify   zk/verification_key.json   evidence/demo/20260905T183504Z-f964ca/zk_public.json   evidence/demo/20260905T183504Z-f964ca/zk_proof.json
+node zk/node_modules/snarkjs/build/cli.cjs groth16 verify   zk/verification_key.json   evidence/demo/20260906T041928Z-14f68b/zk_public.json   evidence/demo/20260906T041928Z-14f68b/zk_proof.json
 ```
 
 ## The evidence bundle
@@ -317,9 +325,12 @@ that checkable rather than asserted:
 - **No match means exit 2.** There is no fallback to a curated URL. Grep the
   search module for `instagram.com/` and you will not find one.
 - **The `control` command re-scores a finished run against a different
-  person's face.** On the demo run: 20 of 20 candidates matched the scanned
-  face, 0 of 20 matched the control. It costs no search quota, because it
-  re-uses thumbnails already on disk.
+  person's face.** On the published run: **40 of 40** candidates matched the
+  scanned face, **0 of 40** matched the control. Same posts, same thresholds,
+  same code — only the reference face changed, and every match disappeared.
+  The artifact is
+  [`control.json`](evidence/demo/20260906T041928Z-14f68b/control.json); it costs
+  no search quota, because it re-uses thumbnails already on disk.
 
 Full detail, including the control-run table: [docs/genuine-search.md](docs/genuine-search.md).
 
@@ -432,7 +443,7 @@ ui/                  React dashboard
 tests/               66 tests, no keys required
 verify.py            standalone verifier: web3 and the standard library only
 demo/                public-figure portraits with their sources
-evidence/demo/       one sanitised real run, without the biometric secret
+evidence/demo/       three sanitised real runs; …-14f68b is the complete one
 ```
 
 ## Credits
