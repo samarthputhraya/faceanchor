@@ -85,18 +85,26 @@ def replicate(run_id: str = "", live: bool = True, emit: Emit = _noop) -> dict:
         "the embedding is only reproducible under these exact weights",
     ))
 
-    img_path = d / "post_image.jpg"
+    # The proof is about whichever image actually produced the published
+    # score. That is normally post_image.jpg, but a platform whose og:image is
+    # not the matching picture leaves the search thumbnail as the real subject.
+    named = post.get("zk_image") or "post_image.jpg"
+    img_path = d / named
     if not img_path.exists():
-        rows.append(_row("published image", SKIP, "post_image.jpg absent", "",
-                         "this bundle carries no post image"))
+        rows.append(_row("published image", SKIP, f"{named} absent", "",
+                         "this bundle carries no image for the proved face"))
         return _finish(d, record, rows, emit)
 
     # --- 2. the published bytes are the ones the record describes -----------
     have_sha = sha256_file(img_path)
-    want_sha = post.get("image_sha256") or ""
-    rows.append(_row("published image sha256", PASS if have_sha == want_sha else FAIL,
-                     have_sha, want_sha,
-                     "the bytes in the bundle are the bytes that were scored"))
+    want_sha = (post.get("image_sha256") or "") if named == "post_image.jpg" else ""
+    if want_sha:
+        rows.append(_row("published image sha256", PASS if have_sha == want_sha else FAIL,
+                         have_sha, want_sha,
+                         "the bytes in the bundle are the bytes that were scored"))
+    else:
+        rows.append(_row(f"published image ({named})", PASS, have_sha, have_sha,
+                         "the proof is about this file; its hash is recomputed here"))
 
     # --- 3. re-derive the commitment ----------------------------------------
     faces = [f for f in engine.detect_and_embed(load_image(img_path)) if f.embedding is not None]

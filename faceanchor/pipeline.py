@@ -449,25 +449,47 @@ def extract(run_id: str = "", use_browser: bool = True, emit: Emit = _noop) -> d
     post_zk_commitment = ""
     post_zk_salt_public = ""
     post_similarity = None
+    zk_image = ""
     if p.image_file:
         try:
             engine = get_engine(read_json(d / "face.json")["engine"].split("/")[0])
             engine.load()
             q = np.load(d / "embedding.npy")
-            faces = engine.detect_and_embed(load_image(d / p.image_file))
 
-            # Keep the winning embedding, not just its score: it is the second
-            # input to the zk circuit, and it used to be discarded here.
-            best_emb, best_sim = None, -2.0
-            for f in faces:
-                if f.embedding is None:
-                    continue
-                s = cosine(q, f.embedding)
-                if s > best_sim:
-                    best_sim, best_emb = s, f.embedding
+            def _best_face(path: Path) -> tuple[np.ndarray | None, float]:
+                """The face in `path` closest to the scanned one, and its cosine."""
+                emb, best = None, -2.0
+                for f in engine.detect_and_embed(load_image(path)):
+                    if f.embedding is None:
+                        continue
+                    s = cosine(q, f.embedding)
+                    if s > best:
+                        best, emb = s, f.embedding
+                return emb, best
+
+            post_emb, post_sim = _best_face(d / p.image_file)
+            if post_emb is not None:
+                post_similarity = round(float(post_sim), 4)
+
+            # The proof has to be about the image that produced the number we
+            # publish. A platform's og:image is often not the picture that
+            # matched -- a YouTube Short serves a different frame entirely --
+            # and committing to that while reporting the thumbnail's score
+            # attests a pair that does not match. The registry then correctly
+            # refuses the record. So pick whichever image actually won.
+            best_emb, best_sim, best_file, best_source = post_emb, post_sim, p.image_file, p.image_source
+            if thumb and Path(thumb).exists():
+                thumb_emb, thumb_sim = _best_face(Path(thumb))
+                if thumb_emb is not None and thumb_sim > (best_sim if best_emb is not None else -2.0):
+                    best_emb, best_sim = thumb_emb, thumb_sim
+                    best_file = str(Path(thumb).relative_to(d)).replace("\\", "/")
+                    best_source = "search_thumbnail"
 
             if best_emb is not None:
-                post_similarity = round(float(best_sim), 4)
+                zk_image = best_file
+                # The vector the proof is about, which is not always the post
+                # image's: replicate checks its own re-derivation against this,
+                # so storing the wrong one reports a mismatch on an honest run.
                 np.save(d / "post_embedding.npy", best_emb)
                 secret = read_json(d / "face_secret.json")
                 _, post_salt, post_quantised = fingerprint.commit(best_emb)
@@ -486,16 +508,21 @@ def extract(run_id: str = "", use_browser: bool = True, emit: Emit = _noop) -> d
                 })
                 # salt_b is deliberately PUBLIC. Salting the scanned face keeps
                 # a private biometric unlinkable; salting the face in a public
-                # post image hides nothing -- anyone can fetch that image and
-                # compute the vector. Publishing it is what lets a third party
-                # re-derive commitment_b and check it against the chain, so it
-                # buys verifiability at no privacy cost.
+                # image hides nothing -- anyone can fetch that image and compute
+                # the vector. Publishing it is what lets a third party re-derive
+                # commitment_b and check it against the chain, so it buys
+                # verifiability at no privacy cost.
                 post_zk_salt_public = post_zk_salt
                 if best_sim > similarity:
-                    similarity, similarity_source = best_sim, p.image_source
+                    similarity, similarity_source = best_sim, best_source
             p.image_phash = phash_hex(d / p.image_file)
         except Exception as exc:  # noqa: BLE001
-            p.notes.append(f"post-image rescore failed: {type(exc).__name__}")
+            # The message, not just the type: this handler once swallowed a
+            # NameError and the only trace of it was the word "NameError" in a
+            # note nobody reads, while the proof quietly attested the wrong pair.
+            p.notes.append(f"post-image rescore failed: {type(exc).__name__}: {exc}"[:200])
+            emit(StageEvent("log", "extract",
+                            f"post-image rescore failed: {type(exc).__name__}: {exc}"[:200]))
 
     out = p.as_dict()
     out.update({
@@ -513,6 +540,9 @@ def extract(run_id: str = "", use_browser: bool = True, emit: Emit = _noop) -> d
         "post_image_similarity": post_similarity,
         "zk_commitment": post_zk_commitment or None,
         "zk_salt": post_zk_salt_public or None,
+        # Which file the proof is about. Usually post_image.jpg, but the search
+        # thumbnail when a platform's og:image is not the picture that matched.
+        "zk_image": zk_image or None,
     })
     write_json(d / "post.json", out)
     emit(StageEvent("stage_end", "extract",
@@ -709,6 +739,7 @@ def build_record(d: Path) -> dict:
             "similarity_source": post["similarity_source"],
             "zk_commitment": post.get("zk_commitment") or None,
             "zk_salt": post.get("zk_salt") or None,
+            "zk_image": post.get("zk_image") or None,
         },
     }
 
