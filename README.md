@@ -40,7 +40,7 @@ live post image          PASS      hamming 0 against the live post
 ![license](https://img.shields.io/badge/license-MIT-green)
 
 *Hacker House Goa 2026, shortlisting task 3.*
-Demo video: _added before submission_
+Demo video: **https://youtu.be/thZTz7zxq7o**
 
 ## What it does
 
